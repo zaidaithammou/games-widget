@@ -9,7 +9,6 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **Installed Game Scanning**: Read installed game records from Steam, Epic Games, and GOG
 - **Automatic Cover Art**: Try Steam, then Epic Games Store and EGDATA artwork; fill missing covers in the existing library
 - **Cover Art Styles**: Choose Disks or Icons, with Icons showing fitted game artwork
-- **AI Artwork Upscaling**: Locally upscale the saved game artwork with Swin2SR to improve small or compressed images
 - **Compact Game Cards**: Keep each row sized to the game cards, even when a row has only one or two games
 - **Window Size and Placement Limits**: Keep the full widget on a display, with an expanded size range of 520 × 460 through 960 × 540 pixels
 - **Launcher and Custom Group Folders**: Sort into animated folders by launcher or assign games to user-created groups
@@ -66,6 +65,7 @@ The portable `.exe` is written to `build`.
 ### Basic Controls
 
 - **System Tray**: Right-click the tray icon to show/hide the widget or access settings
+- **User Groups**: Custom groups and group assignments persist across restarts in the app's user data
 - **Drag**: Click and drag the widget header to move it around your desktop
 - **Resize**: Drag the edges/corners to resize the widget
 - **Close Button**: Hides the widget (doesn't quit the application)

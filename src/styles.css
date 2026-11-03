@@ -552,17 +552,6 @@ select option {
     color: rgba(255, 255, 255, 0.8);
 }
 
-.setting-help,
-.enhance-artwork-status {
-    margin: 0 0 12px;
-    color: rgba(255, 255, 255, 0.62);
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-.enhance-artwork-status { margin-top: 10px; }
-#enhanceArtworkBtn:disabled { opacity: 0.62; cursor: progress; }
-
 .setting-option {
     display: flex;
     align-items: center;
