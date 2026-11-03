@@ -4,6 +4,8 @@ let coverArtStyle = 'icons';
 let sortBy = 'name';
 let userGroups = [];
 let expandedGameGroups = new Set();
+let editingGame = null;
+let pendingGameWallpaper = null;
 
 // DOM Elements
 const gamesGrid = document.getElementById('gamesGrid');
@@ -13,6 +15,7 @@ const coverArtSelect = document.getElementById('coverArtSelect');
 const settingsBtn = document.getElementById('settingsBtn');
 const scanGamesBtn = document.getElementById('scanGamesBtn');
 const settingsPanel = document.getElementById('settingsPanel');
+const editGamePanel = document.getElementById('editGamePanel');
 const scannerPanel = document.getElementById('scannerPanel');
 const minimizeBtn = document.getElementById('minimizeBtn');
 const closeBtn = document.getElementById('closeBtn');
@@ -255,6 +258,9 @@ function setupEventListeners() {
     document.getElementById('addGroupBtn').addEventListener('click', showAddGroupForm);
     document.getElementById('addGroupForm').addEventListener('submit', createUserGroup);
     document.getElementById('cancelGroupBtn').addEventListener('click', hideAddGroupForm);
+    document.getElementById('editGameForm').addEventListener('submit', saveEditedGame);
+    document.getElementById('cancelEditGameBtn').addEventListener('click', closeEditGame);
+    document.getElementById('chooseWallpaperBtn').addEventListener('click', chooseGameWallpaper);
 
     // IPC Listeners
     window.gamesWidget.onOpenSettings(() => {
@@ -268,6 +274,7 @@ function setupEventListeners() {
 function renderGames() {
     const searchTerm = searchInput.value.toLowerCase();
     let filteredGames = games.filter(game => 
+        getDisplayName(game).toLowerCase().includes(searchTerm) ||
         game.name.toLowerCase().includes(searchTerm) ||
         String(game.category || '').toLowerCase().includes(searchTerm) ||
         getGameGroupName(game).toLowerCase().includes(searchTerm)
@@ -394,23 +401,29 @@ function createGameCard(game) {
     const removeGlyph = document.createElement('span');
     removeGlyph.textContent = '×';
     removeButton.appendChild(removeGlyph);
-    removeButton.title = `Remove ${game.name}`;
-    removeButton.setAttribute('aria-label', `Remove ${game.name} from library`);
+    removeButton.title = `Remove ${getDisplayName(game)}`;
+    removeButton.setAttribute('aria-label', `Remove ${getDisplayName(game)} from library`);
     removeButton.addEventListener('click', (event) => {
         event.stopPropagation();
         removeGame(game);
     });
 
-    const imageSource = coverArtStyle === 'icons'
+    const imageSource = game.customWallpaper || (coverArtStyle === 'icons'
         ? (game.landscapeImage || game.coverImage)
         : coverArtStyle === 'disks'
             ? (game.coverImage || game.landscapeImage || game.iconImage || game.appIconImage)
-            : (game.coverImage || game.landscapeImage || game.iconImage || game.appIconImage);
+            : (game.coverImage || game.landscapeImage || game.iconImage || game.appIconImage));
     if (imageSource) {
         const img = document.createElement('img');
         img.src = imageSource;
         img.alt = game.name;
         img.onerror = async () => {
+            if (game.customWallpaper === imageSource) {
+                game.customWallpaper = null;
+                saveGames();
+                renderGames();
+                return;
+            }
             if (img.dataset.backupAttempted) {
                 if (game.coverImage === imageSource) game.coverImage = null;
                 if (game.iconImage === imageSource) game.iconImage = null;
@@ -456,7 +469,7 @@ function createGameCard(game) {
 
     const title = document.createElement('div');
     title.className = 'game-title';
-    title.textContent = game.name;
+    title.textContent = getDisplayName(game);
 
     const category = document.createElement('div');
     category.className = 'game-category';
@@ -478,7 +491,7 @@ function createGameCard(game) {
     playButton.className = 'game-play-btn';
     playButton.type = 'button';
     playButton.textContent = '▶ Play';
-    playButton.setAttribute('aria-label', `Play ${game.name}`);
+    playButton.setAttribute('aria-label', `Play ${getDisplayName(game)}`);
     playButton.addEventListener('click', (event) => {
         event.stopPropagation();
         launchGame(game);
@@ -525,11 +538,12 @@ function getGameEmoji(category) {
 }
 
 async function launchGame(game) {
+    const displayName = getDisplayName(game);
     try {
         const result = await window.gamesWidget.launchGame(game);
-        if (!result?.ok) alert(result?.error || `Could not start ${game.name}.`);
+        if (!result?.ok) alert(result?.error || `Could not start ${displayName}.`);
     } catch (error) {
-        alert(`Could not start ${game.name}: ${error.message}`);
+        alert(`Could not start ${displayName}: ${error.message}`);
     }
 }
 
@@ -630,19 +644,78 @@ function showGameGroupMenu(x, y, game) {
 }
 
 
-// Edit Game
+function getDisplayName(game) {
+    return typeof game.displayName === 'string' && game.displayName.trim() ? game.displayName.trim() : game.name;
+}
+
 function editGame(game) {
-    const newName = prompt('Enter new game name:', game.name);
-    if (newName && newName.trim()) {
-        game.name = newName.trim();
-        saveGames();
-        renderGames();
+    editingGame = game;
+    pendingGameWallpaper = game.customWallpaper || null;
+    document.getElementById('editGameName').value = getDisplayName(game);
+    document.getElementById('editGameStatus').textContent = '';
+    updateEditWallpaperPreview(pendingGameWallpaper || game.landscapeImage || game.coverImage || game.iconImage || game.appIconImage);
+    settingsPanel.style.display = 'none';
+    editGamePanel.style.display = 'flex';
+    document.getElementById('editGameName').focus();
+}
+
+function updateEditWallpaperPreview(imageUrl) {
+    const previewWrap = document.getElementById('editWallpaperPreviewWrap');
+    const preview = document.getElementById('editWallpaperPreview');
+    const placeholder = document.getElementById('editWallpaperPlaceholder');
+    if (imageUrl) {
+        preview.src = imageUrl;
+        previewWrap.classList.add('has-image');
+        placeholder.textContent = 'Current wallpaper';
+    } else {
+        preview.removeAttribute('src');
+        previewWrap.classList.remove('has-image');
+        placeholder.textContent = 'No wallpaper available';
     }
+}
+
+async function chooseGameWallpaper() {
+    if (!editingGame) return;
+    const status = document.getElementById('editGameStatus');
+    try {
+        const result = await window.gamesWidget.chooseGameWallpaper(editingGame.id);
+        if (result?.canceled) return;
+        if (!result?.ok) {
+            status.textContent = result?.error || 'Could not load that image.';
+            return;
+        }
+        pendingGameWallpaper = result.image;
+        updateEditWallpaperPreview(pendingGameWallpaper);
+        status.textContent = '';
+    } catch (error) {
+        status.textContent = `Could not load that image: ${error.message}`;
+    }
+}
+
+function saveEditedGame(event) {
+    event.preventDefault();
+    if (!editingGame) return;
+    const name = document.getElementById('editGameName').value.trim();
+    if (!name) {
+        document.getElementById('editGameStatus').textContent = 'Enter a name for this game.';
+        return;
+    }
+    editingGame.displayName = name;
+    if (pendingGameWallpaper) editingGame.customWallpaper = pendingGameWallpaper;
+    saveGames();
+    closeEditGame();
+    renderGames();
+}
+
+function closeEditGame() {
+    editGamePanel.style.display = 'none';
+    editingGame = null;
+    pendingGameWallpaper = null;
 }
 
 // Remove Game
 function removeGame(game) {
-    if (confirm(`Remove ${game.name} from your library?`)) {
+    if (confirm(`Remove ${getDisplayName(game)} from your library?`)) {
         games = games.filter(g => g.id !== game.id);
         saveGames();
         renderGames();

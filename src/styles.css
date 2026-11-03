@@ -42,11 +42,16 @@ body {
 /* Window Controls */
 .window-controls {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 44px;
     padding: 8px 12px;
     background: rgba(0, 0, 0, 0.3);
     -webkit-app-region: no-drag;
 }
+
+.window-menu-icon { width: 28px; height: 28px; object-fit: contain; flex: 0 0 28px; }
+.window-control-buttons { display: flex; align-items: center; }
 
 .control-btn {
     width: 28px;
@@ -90,14 +95,6 @@ body {
     align-items: center;
     gap: 9px;
     min-width: 0;
-}
-
-.widget-brand-icon {
-    display: block;
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-    flex: 0 0 28px;
 }
 
 .widget-header h1 {
@@ -544,6 +541,49 @@ select option {
     overflow-y: auto;
     flex: 1;
 }
+
+.edit-game-content {
+    width: min(520px, 100%);
+    margin: auto;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.edit-game-content h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.edit-game-content > label { display: block; margin: 14px 0 7px; color: rgba(255,255,255,.78); font-size: 13px; }
+.edit-game-content > input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 8px;
+    background: rgba(255,255,255,.1);
+    color: white;
+    font: inherit;
+}
+.edit-wallpaper-preview {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    max-height: 240px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 9px;
+    background: rgba(0,0,0,.24);
+}
+.edit-wallpaper-preview img { display: none; max-width: 100%; max-height: 240px; object-fit: contain; }
+.edit-wallpaper-preview.has-image img { display: block; }
+.edit-wallpaper-preview.has-image span { display: none; }
+.edit-wallpaper-preview span { color: rgba(255,255,255,.5); font-size: 13px; }
 
 .settings-content h2,
 .scanner-content h2 {

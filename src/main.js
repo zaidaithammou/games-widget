@@ -1,6 +1,8 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, shell, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const { createHash } = require('node:crypto');
+const { pathToFileURL } = require('node:url');
 const { execFileSync } = require('node:child_process');
 const { spawn } = require('node:child_process');
 
@@ -23,6 +25,7 @@ const artworkLookupCache = new Map();
 const settingsPath = () => path.join(app.getPath('userData'), 'widget-settings.json');
 const libraryPath = () => path.join(app.getPath('userData'), 'games-library.json');
 const groupsPath = () => path.join(app.getPath('userData'), 'user-groups.json');
+const customArtworkDir = () => path.join(app.getPath('userData'), 'custom-artwork');
 
 function readSettings() {
   try { return JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch { return {}; }
@@ -667,6 +670,31 @@ app.whenReady().then(() => {
       child.unref();
       return { ok: true };
     } catch (error) { return { ok: false, error: error.message || 'Could not start the game.' }; }
+  });
+  ipcMain.handle('games:choose-wallpaper', async (_event, gameId) => {
+    if (typeof gameId !== 'string' || !gameId) return { ok: false, error: 'Invalid game entry.' };
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Choose a game wallpaper',
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'] }]
+    });
+    if (result.canceled || !result.filePaths.length) return { canceled: true };
+    try {
+      const source = result.filePaths[0];
+      const extension = path.extname(source).toLowerCase();
+      const stat = fs.statSync(source);
+      if (!['.png', '.jpg', '.jpeg', '.webp', '.bmp'].includes(extension) || stat.size > 30 * 1024 * 1024) {
+        return { ok: false, error: 'Choose a supported image smaller than 30 MB.' };
+      }
+      fs.mkdirSync(customArtworkDir(), { recursive: true });
+      const safeId = createHash('sha256').update(gameId).digest('hex');
+      const destination = path.join(customArtworkDir(), `${safeId}${extension}`);
+      fs.copyFileSync(source, destination);
+      return { ok: true, image: pathToFileURL(destination).href };
+    } catch (error) {
+      console.error('Could not save the custom game wallpaper:', error);
+      return { ok: false, error: 'Could not load that image.' };
+    }
   });
   ipcMain.handle('games:executable-icon', async (_event, executablePath, installPath, gameName) => {
     if (process.platform !== 'win32') return null;
