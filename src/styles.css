@@ -222,17 +222,15 @@ select option {
 }
 
 .game-remove-btn {
-    position: absolute;
-    top: 7px;
-    right: 7px;
-    z-index: 5;
-    width: 26px;
-    height: 26px;
+    position: static;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 50%;
     background: rgba(17, 22, 34, 0.82);
     color: #fff;
-    font: 20px/20px 'Segoe UI', sans-serif;
+    font: 22px/1 'Segoe UI', sans-serif;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -243,10 +241,34 @@ select option {
     transition: opacity 0.15s ease, background 0.15s ease;
 }
 
-.game-card:hover .game-remove-btn,
+.game-remove-btn:hover,
 .game-remove-btn:focus-visible { opacity: 1; }
 
 .game-remove-btn:hover { background: #d64050; }
+
+.game-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.game-play-btn {
+    min-width: 88px;
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    font: 600 12px 'Segoe UI', sans-serif;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.game-play-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
 
 .game-card:hover {
     transform: translateY(-4px);

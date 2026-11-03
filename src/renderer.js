@@ -18,9 +18,9 @@ const closeBtn = document.getElementById('closeBtn');
 const compactRestoreBtn = document.getElementById('compactRestoreBtn');
 
 // Initialize
-function init() {
+async function init() {
     loadSettings();
-    loadGames();
+    await loadGames();
     setupEventListeners();
     renderGames();
     fetchMissingArtwork();
@@ -33,9 +33,9 @@ async function fetchExecutableIcons() {
         try {
             const result = await window.gamesWidget.getExecutableIcon(game.executablePath, game.installPath, game.name);
             if (result?.image) {
-                if (game.executablePath !== result.executablePath || game.iconImage !== result.image) {
+                if (game.executablePath !== result.executablePath || game.appIconImage !== result.image) {
                     game.executablePath = result.executablePath;
-                    game.iconImage = result.image;
+                    game.appIconImage = result.image;
                     changed = true;
                 }
             }
@@ -68,25 +68,32 @@ function loadSettings() {
 }
 
 // Load Games
-function loadGames() {
-    const savedGames = localStorage.getItem('games');
-    if (savedGames) {
-        try {
-            const storedGames = JSON.parse(savedGames);
-            const unique = new Map();
-            for (const game of storedGames) {
-                const identity = game.steamAppId
-                    ? `${game.platform}:appid:${game.steamAppId}`
-                    : `${game.platform}:${game.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`;
-                if (!unique.has(identity)) unique.set(identity, game);
-            }
-            games = [...unique.values()];
-            if (games.length !== storedGames.length) saveGames();
-        } catch (error) {
+async function loadGames() {
+    let storedGames = null;
+    try { storedGames = await window.gamesWidget.loadGames(); } catch (error) {
+        console.warn('Could not load the saved game library file:', error);
+    }
+    if (!Array.isArray(storedGames)) {
+        try { storedGames = JSON.parse(localStorage.getItem('games') || '[]'); }
+        catch (error) {
             console.warn('Could not load the saved game list:', error);
-            games = [];
+            storedGames = [];
         }
     }
+    const unique = new Map();
+    for (const game of storedGames) {
+        if (typeof game.iconImage === 'string' && game.iconImage.startsWith('data:image/')) {
+            game.appIconImage = game.appIconImage || game.iconImage;
+            game.iconImage = null;
+            game.artworkChecked = false;
+        }
+        const identity = game.steamAppId
+            ? `${game.platform}:appid:${game.steamAppId}`
+            : `${game.platform}:${game.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`;
+        if (!unique.has(identity)) unique.set(identity, game);
+    }
+    games = [...unique.values()];
+    saveGames();
 }
 
 async function fetchMissingArtwork() {
@@ -125,6 +132,7 @@ async function fetchMissingArtwork() {
 // Save Games
 function saveGames() {
     localStorage.setItem('games', JSON.stringify(games));
+    window.gamesWidget.saveGames(games);
 }
 
 // Setup Event Listeners
@@ -305,7 +313,9 @@ function createGameCard(game) {
 
     const imageSource = coverArtStyle === 'wallpaper'
         ? (game.landscapeImage || game.coverImage)
-        : (game.iconImage || game.coverImage);
+        : coverArtStyle === 'disks'
+            ? (game.appIconImage || game.iconImage || game.coverImage)
+            : (game.coverImage || game.landscapeImage || game.iconImage || game.appIconImage);
     if (imageSource) {
         const img = document.createElement('img');
         img.src = imageSource;
@@ -372,9 +382,23 @@ function createGameCard(game) {
         info.appendChild(group);
     }
 
+    const actions = document.createElement('div');
+    actions.className = 'game-actions';
+    const playButton = document.createElement('button');
+    playButton.className = 'game-play-btn';
+    playButton.type = 'button';
+    playButton.textContent = '▶ Play';
+    playButton.setAttribute('aria-label', `Play ${game.name}`);
+    playButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        launchGame(game);
+    });
+    actions.appendChild(playButton);
+    actions.appendChild(removeButton);
+
     card.appendChild(cover);
     card.appendChild(info);
-    card.appendChild(removeButton);
+    card.appendChild(actions);
 
     // Click to launch game (placeholder)
     card.addEventListener('click', () => {
@@ -410,11 +434,13 @@ function getGameEmoji(category) {
     return emojis[category] || '🎮';
 }
 
-// Launch Game (placeholder)
-function launchGame(game) {
-    console.log('Launching game:', game.name);
-    // In a real implementation, this would launch the game executable
-    alert(`Launching ${game.name}...`);
+async function launchGame(game) {
+    try {
+        const result = await window.gamesWidget.launchGame(game);
+        if (!result?.ok) alert(result?.error || `Could not start ${game.name}.`);
+    } catch (error) {
+        alert(`Could not start ${game.name}: ${error.message}`);
+    }
 }
 
 // Show Game Context Menu
@@ -702,11 +728,12 @@ async function addSelectedGames() {
         );
         if (existingGame) {
             if (foundGame.executablePath) existingGame.executablePath = foundGame.executablePath;
+            if (foundGame.epicAppName) existingGame.epicAppName = foundGame.epicAppName;
             try {
                 const result = await window.gamesWidget.getExecutableIcon(existingGame.executablePath, existingGame.installPath, existingGame.name);
                 if (result?.image) {
                     existingGame.executablePath = result.executablePath;
-                    existingGame.iconImage = result.image;
+                    existingGame.appIconImage = result.image;
                 }
             } catch { /* Keep the existing cover art when the executable has no extractable icon. */ }
             return null;
@@ -727,6 +754,7 @@ async function addSelectedGames() {
             artworkSource: artwork?.source || null,
             installPath: foundGame.installPath,
             executablePath: foundGame.executablePath || null,
+            epicAppName: foundGame.epicAppName || null,
             group: null
         };
         if (newGame.executablePath || newGame.installPath) {
@@ -734,7 +762,7 @@ async function addSelectedGames() {
                 const result = await window.gamesWidget.getExecutableIcon(newGame.executablePath, newGame.installPath, newGame.name);
                 if (result?.image) {
                     newGame.executablePath = result.executablePath;
-                    newGame.iconImage = result.image;
+                    newGame.appIconImage = result.image;
                 }
             } catch { /* Keep store artwork if Windows cannot extract an executable icon. */ }
         }

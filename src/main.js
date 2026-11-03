@@ -1,7 +1,8 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
+const { spawn } = require('node:child_process');
 
 let mainWindow;
 let tray;
@@ -13,6 +14,7 @@ let saveBoundsTimer;
 let dragOrigin;
 const artworkLookupCache = new Map();
 const settingsPath = () => path.join(app.getPath('userData'), 'widget-settings.json');
+const libraryPath = () => path.join(app.getPath('userData'), 'games-library.json');
 
 function readSettings() {
   try { return JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch { return {}; }
@@ -181,7 +183,7 @@ function scanEpic() {
       if (manifest.bIsIncomplete || manifest.bIsIncompleteInstall || !manifest.bIsApplication || !manifest.DisplayName || !manifest.InstallLocation) continue;
       if (!fs.existsSync(manifest.InstallLocation)) continue;
       const executablePath = manifest.LaunchExecutable ? path.resolve(manifest.InstallLocation, manifest.LaunchExecutable) : findGameExecutable(manifest.InstallLocation, manifest.DisplayName);
-      games.push({ id: `epic-${manifest.InstallationGuid || manifest.AppName}`, name: manifest.DisplayName, category: 'Epic', platform: 'Epic Games', installPath: manifest.InstallLocation, executablePath: executablePath && fs.existsSync(executablePath) ? executablePath : findGameExecutable(manifest.InstallLocation, manifest.DisplayName) });
+      games.push({ id: `epic-${manifest.InstallationGuid || manifest.AppName}`, name: manifest.DisplayName, category: 'Epic', platform: 'Epic Games', installPath: manifest.InstallLocation, executablePath: executablePath && fs.existsSync(executablePath) ? executablePath : findGameExecutable(manifest.InstallLocation, manifest.DisplayName), epicAppName: manifest.AppName || null });
     } catch { /* Ignore invalid or partial Epic manifests */ }
   }
   return games;
@@ -514,6 +516,42 @@ app.whenReady().then(() => {
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
   ipcMain.handle('games:artwork', (_event, query, appId) => lookupArtwork(query, appId));
+  ipcMain.handle('games:load', () => {
+    try {
+      const loaded = JSON.parse(fs.readFileSync(libraryPath(), 'utf8'));
+      return Array.isArray(loaded) ? loaded : null;
+    } catch { return null; }
+  });
+  ipcMain.on('games:save', (_event, library) => {
+    if (!Array.isArray(library)) return;
+    try {
+      fs.mkdirSync(app.getPath('userData'), { recursive: true });
+      fs.writeFileSync(libraryPath(), JSON.stringify(library), 'utf8');
+    } catch (error) { console.error('Could not save the game library:', error); }
+  });
+  ipcMain.handle('games:launch', async (_event, game) => {
+    if (!game || typeof game !== 'object') return { ok: false, error: 'Invalid game entry.' };
+    try {
+      if (game.platform === 'Steam' && /^\d+$/.test(String(game.steamAppId || ''))) {
+        await shell.openExternal(`steam://run/${game.steamAppId}`);
+        return { ok: true };
+      }
+      if (game.platform === 'Epic Games' && /^[\w.-]+$/.test(String(game.epicAppName || ''))) {
+        await shell.openExternal(`com.epicgames.launcher://apps/${encodeURIComponent(game.epicAppName)}?action=launch&silent=true`);
+        return { ok: true };
+      }
+      const root = typeof game.installPath === 'string' ? path.resolve(game.installPath) : '';
+      let executablePath = typeof game.executablePath === 'string' ? path.resolve(game.executablePath) : '';
+      const relative = root && executablePath ? path.relative(root, executablePath) : '';
+      if (!executablePath || !root || !relative || relative.startsWith('..') || path.isAbsolute(relative) || !fs.existsSync(executablePath)) {
+        executablePath = root ? findGameExecutable(root, game.name) : null;
+      }
+      if (!executablePath || !fs.existsSync(executablePath)) return { ok: false, error: `Could not find the game executable for ${game.name}.` };
+      const child = spawn(executablePath, [], { cwd: path.dirname(executablePath), detached: true, stdio: 'ignore', windowsHide: false });
+      child.unref();
+      return { ok: true };
+    } catch (error) { return { ok: false, error: error.message || 'Could not start the game.' }; }
+  });
   ipcMain.handle('games:executable-icon', async (_event, executablePath, installPath, gameName) => {
     if (process.platform !== 'win32') return null;
     if (typeof executablePath !== 'string' || path.extname(executablePath).toLowerCase() !== '.exe' || !path.isAbsolute(executablePath) || !fs.existsSync(executablePath)) {

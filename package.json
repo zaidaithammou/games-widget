@@ -1,6 +1,6 @@
 {
   "name": "games-widget",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A modern Windows desktop widget for game library display",
   "main": "src/main.js",
   "scripts": {
