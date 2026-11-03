@@ -11,7 +11,7 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **Drag & Drop Relocation**: Drag the header to move the widget; its position and size are saved
 - **Compact Mode**: The minimize button leaves a small movable app icon on screen; click it to expand the widget
 - **Resize Functionality**: Customize the widget size when open
-- **Multiple Cover Art Styles**: Choose regular icons, small fetched icons, discs, or full-fit wallpapers
+- **Multiple Cover Art Styles**: Choose centered game icons, discs, or full-fit wallpapers
 - **Sorting Options**: Sort games by name, category, or user-created groups
 - **User Groups**: Create custom groups to organize your games
 - **Modern UI**: Beautiful gradient design with smooth animations

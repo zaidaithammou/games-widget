@@ -204,13 +204,14 @@ async function findSteamArtwork(query, knownAppId) {
       const details = await steamRequest(`https://store.steampowered.com/api/appdetails?appids=${knownAppId}&l=english`);
       const item = details[knownAppId]?.data;
       if (item?.header_image) return {
-        appid: Number(knownAppId), name: item.name || term, image: item.header_image,
+        appid: Number(knownAppId), name: item.name || term, image: item.header_image, landscapeImage: item.header_image,
         iconImage: item.small_capsule_image || item.capsule_imagev5 || item.capsule_image || item.header_image
       };
     } catch { /* The CDN image URL is still known from the installed app ID. */ }
     return {
       appid: Number(knownAppId), name: term,
       image: `https://cdn.akamai.steamstatic.com/steam/apps/${knownAppId}/header.jpg`,
+      landscapeImage: `https://cdn.akamai.steamstatic.com/steam/apps/${knownAppId}/header.jpg`,
       iconImage: `https://cdn.akamai.steamstatic.com/steam/apps/${knownAppId}/capsule_184x69.jpg`
     };
   }
@@ -230,7 +231,7 @@ async function findSteamArtwork(query, knownAppId) {
     const game = details[item.id]?.data;
     const image = game?.header_image || item.tiny_image;
     if (image) return {
-      appid: item.id, name: item.name, image,
+      appid: item.id, name: item.name, image, landscapeImage: image,
       iconImage: game?.small_capsule_image || game?.capsule_imagev5 || item.tiny_image || image
     };
   } catch { /* Steam search result still contains a small capsule image */ }
@@ -268,11 +269,10 @@ async function findEpicArtwork(query) {
   );
   if (!result) return null;
   const images = result.keyImages || [];
-  const preferredTypes = ['OfferImageTall', 'DieselGameBoxTall', 'Thumbnail', 'DieselStoreFrontTall', 'OfferImageWide', 'DieselStoreFrontWide'];
-  const image = preferredTypes.map((type) => images.find((candidate) => candidate.type === type)?.url).find(Boolean)
-    || images.find((candidate) => candidate.url)?.url;
-  const iconImage = images.find((candidate) => ['Thumbnail', 'DieselGameBoxTall'].includes(candidate.type))?.url || image;
-  return image ? { name: result.title, image, iconImage, source: 'Epic Games Store' } : null;
+  const landscapeImage = ['OfferImageWide', 'DieselStoreFrontWide'].map((type) => images.find((candidate) => candidate.type === type)?.url).find(Boolean);
+  const iconImage = ['Thumbnail', 'DieselGameBoxTall', 'OfferImageTall', 'DieselStoreFrontTall', 'OfferImageWide', 'DieselStoreFrontWide'].map((type) => images.find((candidate) => candidate.type === type)?.url).find(Boolean);
+  const image = landscapeImage || iconImage || images.find((candidate) => candidate.url)?.url;
+  return image ? { name: result.title, image, landscapeImage: landscapeImage || null, iconImage: iconImage || image, source: 'Epic Games Store' } : null;
 }
 
 function collectEpicImages(value, output = []) {
@@ -290,10 +290,10 @@ function collectEpicImages(value, output = []) {
 }
 
 function chooseEpicImages(images) {
-  const order = ['OfferImageTall', 'DieselGameBoxTall', 'Thumbnail', 'DieselStoreFrontTall', 'OfferImageWide', 'DieselStoreFrontWide'];
-  const image = order.map((type) => images.find((entry) => entry.type === type)?.url).find(Boolean) || images[0]?.url;
-  const iconImage = images.find((entry) => ['Thumbnail', 'DieselGameBoxTall'].includes(entry.type))?.url || image;
-  return image ? { image, iconImage } : null;
+  const landscapeImage = ['OfferImageWide', 'DieselStoreFrontWide'].map((type) => images.find((entry) => entry.type === type)?.url).find(Boolean);
+  const iconImage = ['Thumbnail', 'DieselGameBoxTall', 'OfferImageTall', 'DieselStoreFrontTall', 'OfferImageWide', 'DieselStoreFrontWide'].map((type) => images.find((entry) => entry.type === type)?.url).find(Boolean);
+  const image = landscapeImage || iconImage || images[0]?.url;
+  return image ? { image, landscapeImage: landscapeImage || null, iconImage: iconImage || image } : null;
 }
 
 async function findEgdataArtwork(query) {
@@ -339,10 +339,16 @@ async function findEgdataArtwork(query) {
   }
 
   const selected = chooseEpicImages(images);
-  if (selected) return { name: offer.title, ...selected, source: 'EGDATA' };
+  if (selected) {
+    const isFortnite = String(offer.title).toLocaleLowerCase() === 'fortnite';
+    const fortniteLandscape = 'https://cdn1.epicgames.com/offer/fn/FNBR_42-30_Fortnitemares_KeyArt_Fortnitemares_EGS_Launcher_Blade_2560x1440_2560x1440-75958091d6bd48dc847c3b17abedd28a?quality=high&resize=1&w=720';
+    if (isFortnite && !selected.landscapeImage) selected.image = selected.landscapeImage = fortniteLandscape;
+    return { name: offer.title, ...selected, source: 'EGDATA' };
+  }
   return {
     name: offer.title,
     image: `https://api.egdata.app/offers/${encodeURIComponent(offer.id)}/og.webp?country=US`,
+    landscapeImage: `https://api.egdata.app/offers/${encodeURIComponent(offer.id)}/og.webp?country=US`,
     source: 'EGDATA'
   };
 }
@@ -372,8 +378,8 @@ async function findArtwork(query, knownAppId) {
   const epic = await findEpicArtworkWithFallback(query);
   if (epic) return epic;
   if (String(query || '').trim().toLocaleLowerCase() === 'fortnite') {
-    const image = 'https://api.egdata.app/offers/027c646e4b0445e28f9d9abd0326ba36/og.webp?country=US';
-    return { name: 'Fortnite', image, iconImage: image, source: 'EGDATA' };
+    const image = 'https://cdn1.epicgames.com/offer/fn/FNBR_42-30_Fortnitemares_KeyArt_Fortnitemares_EGS_Launcher_Blade_2560x1440_2560x1440-75958091d6bd48dc847c3b17abedd28a?quality=high&resize=1&w=720';
+    return { name: 'Fortnite', image, landscapeImage: image, iconImage: 'https://api.egdata.app/offers/027c646e4b0445e28f9d9abd0326ba36/og.webp?country=US', source: 'EGDATA' };
   }
   return null;
 }
@@ -402,7 +408,8 @@ function lookupBackupArtwork(query) {
     if (term === 'fortnite') {
       return {
         name: 'Fortnite', source: 'EGDATA',
-        image: 'https://api.egdata.app/offers/027c646e4b0445e28f9d9abd0326ba36/og.webp?country=US',
+        image: 'https://cdn1.epicgames.com/offer/fn/FNBR_42-30_Fortnitemares_KeyArt_Fortnitemares_EGS_Launcher_Blade_2560x1440_2560x1440-75958091d6bd48dc847c3b17abedd28a?quality=high&resize=1&w=720',
+        landscapeImage: 'https://cdn1.epicgames.com/offer/fn/FNBR_42-30_Fortnitemares_KeyArt_Fortnitemares_EGS_Launcher_Blade_2560x1440_2560x1440-75958091d6bd48dc847c3b17abedd28a?quality=high&resize=1&w=720',
         iconImage: 'https://api.egdata.app/offers/027c646e4b0445e28f9d9abd0326ba36/og.webp?country=US'
       };
     }
