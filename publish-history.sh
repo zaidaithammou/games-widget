@@ -191,6 +191,14 @@ if [[ $dry_run == true ]]; then
         done
 
         actions=()
+        if [[ $release_exists == false ]]; then
+            if [[ $planned_release == true || ${#remote_release_tags[@]} -gt 0 ]]; then
+                actions+=("wait 5 minutes")
+            else
+                actions+=("publish first pending release immediately")
+            fi
+            planned_release=true
+        fi
         if (( index > main_commit_index )); then
             actions+=("push commit to main")
         fi
@@ -198,12 +206,7 @@ if [[ $dry_run == true ]]; then
             actions+=("push tag")
         fi
         if [[ $release_exists == false ]]; then
-            if [[ $planned_release == true || ${#remote_release_tags[@]} -gt 0 ]]; then
-                actions+=("wait 5 minutes, then create GitHub Release with exe and changelog")
-            else
-                actions+=("create GitHub Release with exe and changelog (first pending release is immediate)")
-            fi
-            planned_release=true
+            actions+=("create GitHub Release with exe and changelog")
         fi
 
         if ((${#actions[@]})); then
