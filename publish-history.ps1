@@ -151,7 +151,14 @@ $remoteNameOutput = Invoke-Git -Arguments @('remote') -Capture
 $remoteNames = @($remoteNameOutput -split "`r?`n" | Where-Object { $_ })
 if ('origin' -in $remoteNames) {
     $existingRemote = Invoke-Git -Arguments @('remote', 'get-url', 'origin') -Capture
-    if ($existingRemote -ne $remoteUrl) {
+    if ($existingRemote -match '^https://github\.com/([^/]+)/([^/?#]+?)(?:\.git)?/?$') {
+        $existingSlug = "$($Matches[1])/$($Matches[2])"
+    } elseif ($existingRemote -match '^git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$') {
+        $existingSlug = "$($Matches[1])/$($Matches[2])"
+    } else {
+        throw "The existing origin is not a supported github.com URL: $existingRemote"
+    }
+    if ($existingSlug -ne $repositorySlug) {
         throw "The existing origin URL does not match the supplied GitHub repository: $existingRemote"
     }
 } else {
