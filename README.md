@@ -7,11 +7,11 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **Persistent Desktop Widget**: Frameless, always-on-top window with no taskbar button
 - **System Tray Controls**: Show, hide, open settings, or quit from the tray menu; `Ctrl+Alt+G` toggles visibility
 - **Installed Game Scanning**: Read installed game records from Steam, Epic Games, and GOG
-- **Automatic Cover Art**: Try matching Steam artwork first, then Epic Games Store artwork; fill missing covers in the existing library
+- **Automatic Cover Art**: Try Steam, then Epic Games Store and EGDATA artwork; fill missing covers in the existing library
 - **Drag & Drop Relocation**: Drag the header to move the widget; its position and size are saved
 - **Compact Mode**: The minimize button leaves a small movable app icon on screen; click it to expand the widget
 - **Resize Functionality**: Customize the widget size when open
-- **Multiple Cover Art Styles**: Choose between icons, disks, or wallpaper styles
+- **Multiple Cover Art Styles**: Choose regular icons, small fetched icons, discs, or full-fit wallpapers
 - **Sorting Options**: Sort games by name, category, or user-created groups
 - **User Groups**: Create custom groups to organize your games
 - **Modern UI**: Beautiful gradient design with smooth animations
@@ -70,7 +70,7 @@ The portable `.exe` is written to `build`.
 4. Select the games you want to add from the results
 5. Click "Add Selected"
 
-When adding a detected game, the widget tries an exact Steam Store title match first, then an exact Epic Games Store catalog match. This gives Epic-only titles such as Fortnite a second artwork source. It also tries to fill missing covers for games already in the library. Names must match so it does not silently assign artwork for a different game.
+When adding a detected game, the widget tries an exact Steam Store title match, then an Epic Games Store catalog match, then EGDATA. This gives Epic-only titles such as Fortnite additional artwork sources. It also tries to fill missing covers for games already in the library. Names must match so it does not silently assign artwork for a different game.
 
 ### Customizing Appearance
 

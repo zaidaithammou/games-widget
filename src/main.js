@@ -11,6 +11,7 @@ let expandedBounds;
 let dragTimer;
 let saveBoundsTimer;
 let dragOrigin;
+const artworkLookupCache = new Map();
 const settingsPath = () => path.join(app.getPath('userData'), 'widget-settings.json');
 
 function readSettings() {
@@ -202,9 +203,16 @@ async function findSteamArtwork(query, knownAppId) {
     try {
       const details = await steamRequest(`https://store.steampowered.com/api/appdetails?appids=${knownAppId}&l=english`);
       const item = details[knownAppId]?.data;
-      if (item?.header_image) return { appid: Number(knownAppId), name: item.name || term, image: item.header_image };
+      if (item?.header_image) return {
+        appid: Number(knownAppId), name: item.name || term, image: item.header_image,
+        iconImage: item.small_capsule_image || item.capsule_imagev5 || item.capsule_image || item.header_image
+      };
     } catch { /* The CDN image URL is still known from the installed app ID. */ }
-    return { appid: Number(knownAppId), name: term, image: `https://cdn.akamai.steamstatic.com/steam/apps/${knownAppId}/header.jpg` };
+    return {
+      appid: Number(knownAppId), name: term,
+      image: `https://cdn.akamai.steamstatic.com/steam/apps/${knownAppId}/header.jpg`,
+      iconImage: `https://cdn.akamai.steamstatic.com/steam/apps/${knownAppId}/capsule_184x69.jpg`
+    };
   }
   if (term.length < 2) return null;
   const searchUrl = new URL('https://store.steampowered.com/api/storesearch/');
@@ -219,10 +227,14 @@ async function findSteamArtwork(query, knownAppId) {
   if (!item) return null;
   try {
     const details = await steamRequest(`https://store.steampowered.com/api/appdetails?appids=${item.id}&l=english`);
-    const image = details[item.id]?.data?.header_image || item.tiny_image;
-    if (image) return { appid: item.id, name: item.name, image };
+    const game = details[item.id]?.data;
+    const image = game?.header_image || item.tiny_image;
+    if (image) return {
+      appid: item.id, name: item.name, image,
+      iconImage: game?.small_capsule_image || game?.capsule_imagev5 || item.tiny_image || image
+    };
   } catch { /* Steam search result still contains a small capsule image */ }
-  return item.tiny_image ? { appid: item.id, name: item.name, image: item.tiny_image } : null;
+  return item.tiny_image ? { appid: item.id, name: item.name, image: item.tiny_image, iconImage: item.tiny_image } : null;
 }
 
 async function findEpicArtwork(query) {
@@ -259,7 +271,95 @@ async function findEpicArtwork(query) {
   const preferredTypes = ['OfferImageTall', 'DieselGameBoxTall', 'Thumbnail', 'DieselStoreFrontTall', 'OfferImageWide', 'DieselStoreFrontWide'];
   const image = preferredTypes.map((type) => images.find((candidate) => candidate.type === type)?.url).find(Boolean)
     || images.find((candidate) => candidate.url)?.url;
-  return image ? { name: result.title, image, source: 'Epic Games Store' } : null;
+  const iconImage = images.find((candidate) => ['Thumbnail', 'DieselGameBoxTall'].includes(candidate.type))?.url || image;
+  return image ? { name: result.title, image, iconImage, source: 'Epic Games Store' } : null;
+}
+
+function collectEpicImages(value, output = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectEpicImages(item, output);
+  } else if (value && typeof value === 'object') {
+    if (typeof value.url === 'string' && /^https:\/\//i.test(value.url)) {
+      output.push({ type: String(value.type || value.typeKey || ''), url: value.url });
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (/image|asset|media|item/i.test(key)) collectEpicImages(child, output);
+    }
+  }
+  return output;
+}
+
+function chooseEpicImages(images) {
+  const order = ['OfferImageTall', 'DieselGameBoxTall', 'Thumbnail', 'DieselStoreFrontTall', 'OfferImageWide', 'DieselStoreFrontWide'];
+  const image = order.map((type) => images.find((entry) => entry.type === type)?.url).find(Boolean) || images[0]?.url;
+  const iconImage = images.find((entry) => ['Thumbnail', 'DieselGameBoxTall'].includes(entry.type))?.url || image;
+  return image ? { image, iconImage } : null;
+}
+
+async function findEgdataArtwork(query) {
+  const term = String(query || '').trim().slice(0, 100);
+  if (term.length < 2) return null;
+  const searchUrl = new URL('https://api.egdata.app/search/v2/search');
+  searchUrl.searchParams.set('country', 'US');
+  searchUrl.searchParams.set('locale', 'en-US');
+  const searchResponse = await fetch(searchUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ title: term, offerType: 'BASE_GAME', page: 1, limit: 8 }),
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!searchResponse.ok) throw new Error(`EGDATA search returned HTTP ${searchResponse.status}`);
+  const searchData = await searchResponse.json();
+  const normalize = (text) => String(text || '').toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const offer = (searchData.offers || []).find((entry) => normalize(entry.title) === normalize(term));
+  if (!offer?.id) return null;
+
+  let details = offer;
+  try {
+    const detailResponse = await fetch(`https://api.egdata.app/offers/${encodeURIComponent(offer.id)}?locale=en-US`, { signal: AbortSignal.timeout(10000) });
+    if (detailResponse.ok) details = await detailResponse.json();
+  } catch { /* The search result may already contain the image metadata. */ }
+  let images = collectEpicImages(details);
+
+  if (!images.length) {
+    try {
+      const itemsResponse = await fetch(`https://api.egdata.app/offers/${encodeURIComponent(offer.id)}/items`, { signal: AbortSignal.timeout(10000) });
+      if (itemsResponse.ok) {
+        const itemsData = await itemsResponse.json();
+        const itemIds = (Array.isArray(itemsData) ? itemsData : itemsData.items || itemsData.data?.items || []).map((item) => typeof item === 'string' ? item : item.id).filter(Boolean).slice(0, 3);
+        const itemDetails = await Promise.all(itemIds.map(async (id) => {
+          try {
+            const itemResponse = await fetch(`https://api.egdata.app/items/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(10000) });
+            return itemResponse.ok ? itemResponse.json() : null;
+          } catch { return null; }
+        }));
+        for (const item of itemDetails) images.push(...collectEpicImages(item));
+      }
+    } catch { /* Continue to the documented preview image fallback. */ }
+  }
+
+  const selected = chooseEpicImages(images);
+  if (selected) return { name: offer.title, ...selected, source: 'EGDATA' };
+  return {
+    name: offer.title,
+    image: `https://api.egdata.app/offers/${encodeURIComponent(offer.id)}/og.webp?country=US`,
+    source: 'EGDATA'
+  };
+}
+
+async function findEpicArtworkWithFallback(query) {
+  try {
+    const artwork = await findEgdataArtwork(query);
+    if (artwork) return artwork;
+  } catch (error) {
+    console.warn(`EGDATA artwork lookup failed for ${query}:`, error.message);
+  }
+  try {
+    return await findEpicArtwork(query);
+  } catch (error) {
+    console.warn(`Epic Store artwork lookup failed for ${query}:`, error.message);
+    return null;
+  }
 }
 
 async function findArtwork(query, knownAppId) {
@@ -269,7 +369,45 @@ async function findArtwork(query, knownAppId) {
   } catch (error) {
     console.warn(`Steam artwork lookup failed for ${query}:`, error.message);
   }
-  return findEpicArtwork(query);
+  const epic = await findEpicArtworkWithFallback(query);
+  if (epic) return epic;
+  if (String(query || '').trim().toLocaleLowerCase() === 'fortnite') {
+    const image = 'https://api.egdata.app/offers/027c646e4b0445e28f9d9abd0326ba36/og.webp?country=US';
+    return { name: 'Fortnite', image, iconImage: image, source: 'EGDATA' };
+  }
+  return null;
+}
+
+function cachedArtwork(key, lookup) {
+  if (!artworkLookupCache.has(key)) {
+    const pending = lookup().catch((error) => {
+      artworkLookupCache.delete(key);
+      throw error;
+    });
+    artworkLookupCache.set(key, pending);
+  }
+  return artworkLookupCache.get(key);
+}
+
+function lookupArtwork(query, appId) {
+  const term = String(query || '').trim().toLocaleLowerCase();
+  return cachedArtwork(`primary:${appId || ''}:${term}`, () => findArtwork(query, appId));
+}
+
+function lookupBackupArtwork(query) {
+  const term = String(query || '').trim().toLocaleLowerCase();
+  return cachedArtwork(`backup:${term}`, async () => {
+    const result = await findEpicArtworkWithFallback(query);
+    if (result) return result;
+    if (term === 'fortnite') {
+      return {
+        name: 'Fortnite', source: 'EGDATA',
+        image: 'https://api.egdata.app/offers/027c646e4b0445e28f9d9abd0326ba36/og.webp?country=US',
+        iconImage: 'https://api.egdata.app/offers/027c646e4b0445e28f9d9abd0326ba36/og.webp?country=US'
+      };
+    }
+    return null;
+  });
 }
 
 function createWindow() {
@@ -337,8 +475,8 @@ app.whenReady().then(() => {
   ipcMain.on('widget:drag-start', beginDrag);
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
-  ipcMain.handle('games:artwork', (_event, query, appId) => findArtwork(query, appId));
-  ipcMain.handle('games:backup-artwork', (_event, query) => findEpicArtwork(query));
+  ipcMain.handle('games:artwork', (_event, query, appId) => lookupArtwork(query, appId));
+  ipcMain.handle('games:backup-artwork', (_event, query) => lookupBackupArtwork(query));
   createWindow();
   createTray();
   globalShortcut.register('CommandOrControl+Alt+G', () => mainWindow?.isVisible() ? mainWindow.hide() : showWidget());

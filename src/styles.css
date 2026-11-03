@@ -234,6 +234,8 @@ select option {
 
 /* Cover Art Styles */
 .game-cover {
+    position: relative;
+    isolation: isolate;
     width: 100%;
     aspect-ratio: 1;
     border-radius: 8px;
@@ -258,26 +260,63 @@ select option {
     padding: 8px;
 }
 
+.game-cover.style-small-icons {
+    background: rgba(10, 13, 22, 0.44);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    padding: 16px;
+}
+
+.game-cover.style-small-icons img {
+    object-fit: contain;
+    border-radius: 4px;
+}
+
 /* Disks Style */
 .game-cover.style-disks {
     border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.2);
-    padding: 4px;
+    border: 4px solid rgba(196, 207, 224, 0.34);
+    padding: 0;
+    background: radial-gradient(circle, #aeb9c9 0 3%, #343d4d 3.5% 7%, #151b27 7.5% 8%, #8995a7 8.5% 9%, #353e4e 9.5% 60%, #bac4d3 61% 63%, #202735 64% 100%);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.22), 0 5px 14px rgba(0, 0, 0, 0.28);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .game-cover.style-disks::before {
     content: '';
     position: absolute;
-    width: 20%;
-    height: 20%;
-    background: rgba(0, 0, 0, 0.3);
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 17%;
+    height: 17%;
+    border: 2px solid rgba(216, 225, 238, 0.74);
+    background: radial-gradient(circle, #111723 0 28%, #788598 34% 52%, #293242 58% 100%);
     border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(13, 18, 28, 0.65), 0 1px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.game-cover.style-disks img {
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.game-card:hover .game-cover.style-disks {
+    border-color: rgba(170, 185, 211, 0.62);
+    box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.28), 0 8px 18px rgba(0, 0, 0, 0.35);
 }
 
 /* Wallpaper Style */
 .game-cover.style-wallpaper {
     aspect-ratio: 16/9;
     border-radius: 8px;
+    background: rgba(8, 12, 20, 0.55);
+}
+
+.game-cover.style-wallpaper img {
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.18);
 }
 
 .game-info {

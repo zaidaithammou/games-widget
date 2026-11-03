@@ -69,15 +69,17 @@ function loadGames() {
 }
 
 async function fetchMissingArtwork() {
-    const withoutArtwork = games.filter((game) => !game.coverImage);
+    const withoutArtwork = games.filter((game) => !game.coverImage || !game.iconImage);
     if (!withoutArtwork.length) return;
     let changed = false;
     await Promise.all(withoutArtwork.map(async (game) => {
         try {
             const artwork = await window.gamesWidget.findArtwork(game.name, game.steamAppId);
             if (artwork?.image) {
-                game.coverImage = artwork.image;
+                game.coverImage = game.coverImage || artwork.image;
+                game.iconImage = game.iconImage || artwork.iconImage || artwork.image;
                 game.steamAppId = game.steamAppId || artwork.appid;
+                game.artworkSource = artwork.source || game.artworkSource;
                 changed = true;
             }
         } catch (error) {
@@ -260,24 +262,33 @@ function createGameCard(game) {
     const cover = document.createElement('div');
     cover.className = `game-cover style-${coverArtStyle}`;
 
-    if (game.coverImage) {
+    const imageSource = coverArtStyle === 'small-icons' ? (game.iconImage || game.coverImage) : game.coverImage;
+    if (imageSource) {
         const img = document.createElement('img');
-        img.src = game.coverImage;
+        img.src = imageSource;
         img.alt = game.name;
         img.onerror = async () => {
             if (img.dataset.backupAttempted) {
-                game.coverImage = null;
+                if (game.coverImage === imageSource) game.coverImage = null;
+                if (game.iconImage === imageSource) game.iconImage = null;
                 saveGames();
                 img.style.display = 'none';
                 cover.textContent = getGameEmoji(game.category);
                 return;
             }
             img.dataset.backupAttempted = 'true';
+            if (coverArtStyle === 'small-icons' && game.coverImage && game.coverImage !== imageSource) {
+                game.iconImage = game.coverImage;
+                saveGames();
+                renderGames();
+                return;
+            }
             try {
                 const backup = await window.gamesWidget.findBackupArtwork(game.name);
                 if (backup?.image) {
                     game.coverImage = backup.image;
-                    game.artworkSource = backup.source;
+                    game.iconImage = backup.iconImage || backup.image;
+                    game.artworkSource = backup.source || game.artworkSource;
                     saveGames();
                     renderGames();
                     return;
@@ -285,7 +296,8 @@ function createGameCard(game) {
             } catch (error) {
                 console.warn(`Backup artwork lookup failed for ${game.name}:`, error);
             }
-            game.coverImage = null;
+            if (game.coverImage === imageSource) game.coverImage = null;
+            if (game.iconImage === imageSource) game.iconImage = null;
             saveGames();
             img.style.display = 'none';
             cover.textContent = getGameEmoji(game.category);
@@ -654,6 +666,8 @@ async function addSelectedGames() {
             platform: foundGame.platform,
             steamAppId: artwork?.appid || foundGame.steamAppId,
             coverImage: artwork?.image || null,
+            iconImage: artwork?.iconImage || artwork?.image || null,
+            artworkSource: artwork?.source || null,
             installPath: foundGame.installPath,
             group: null
         };
