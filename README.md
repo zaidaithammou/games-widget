@@ -8,6 +8,8 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **System Tray Controls**: Show, hide, open settings, or quit from the tray menu; `Ctrl+Alt+G` toggles visibility
 - **Installed Game Scanning**: Read installed game records from Steam, Epic Games, and GOG
 - **Automatic Cover Art**: Try Steam, then Epic Games Store and EGDATA artwork; fill missing covers in the existing library
+- **Executable Icons**: Use each installed game's own Windows executable icon for the Icons and Disks views when available
+- **Quick Removal**: Remove games from the library with the button on each game card or its right-click menu
 - **Drag & Drop Relocation**: Drag the header to move the widget; its position and size are saved
 - **Compact Mode**: The minimize button leaves a small movable app icon on screen; click it to expand the widget
 - **Resize Functionality**: Customize the widget size when open

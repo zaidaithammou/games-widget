@@ -120,6 +120,33 @@ function steamRoots() {
   return result;
 }
 
+function findGameExecutable(installPath, gameName) {
+  if (!installPath || !fs.existsSync(installPath)) return null;
+  const excluded = /^(unins|uninstall|setup|launcher|crashreporter|unitycrashhandler|vc_redist)/i;
+  const normalizedName = String(gameName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const candidates = [];
+  const queue = [{ dir: installPath, depth: 0 }];
+  let inspected = 0;
+  while (queue.length && inspected < 1800) {
+    const { dir, depth } = queue.shift();
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      if (++inspected > 1800) break;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isFile() && entry.name.toLowerCase().endsWith('.exe') && !excluded.test(entry.name)) candidates.push(fullPath);
+      else if (entry.isDirectory() && depth < 3 && !/^(redist|redistributables|support|crash|easyanticheat|battleye|prerequisites|__installer)$/i.test(entry.name)) queue.push({ dir: fullPath, depth: depth + 1 });
+    }
+  }
+  if (!candidates.length) return null;
+  const score = (file) => {
+    const base = path.basename(file, '.exe').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (base === normalizedName ? 0 : base.includes(normalizedName) || normalizedName.includes(base) ? 1 : 2) * 10 + file.split(path.sep).length;
+  };
+  candidates.sort((a, b) => score(a) - score(b));
+  return candidates[0];
+}
+
 function scanSteam() {
   const games = [];
   for (const root of steamRoots()) {
@@ -135,7 +162,8 @@ function scanSteam() {
         const installDir = acf.match(/"installdir"\s+"([^"]+)"/i)?.[1];
         const stateFlags = Number(acf.match(/"StateFlags"\s+"(\d+)"/i)?.[1] || 0);
         if (!name || !(stateFlags & 4) || !installDir || !fs.existsSync(path.join(appsDir, 'common', installDir))) continue;
-        games.push({ id: `steam-${manifest[1]}`, steamAppId: manifest[1], name, category: 'Steam', platform: 'Steam', installPath: path.join(appsDir, 'common', installDir) });
+        const installPath = path.join(appsDir, 'common', installDir);
+        games.push({ id: `steam-${manifest[1]}`, steamAppId: manifest[1], name, category: 'Steam', platform: 'Steam', installPath, executablePath: findGameExecutable(installPath, name) });
       } catch { /* Ignore incomplete or unreadable manifests */ }
     }
   }
@@ -152,7 +180,8 @@ function scanEpic() {
       const manifest = JSON.parse(fs.readFileSync(path.join(manifestsDir, file), 'utf8'));
       if (manifest.bIsIncomplete || manifest.bIsIncompleteInstall || !manifest.bIsApplication || !manifest.DisplayName || !manifest.InstallLocation) continue;
       if (!fs.existsSync(manifest.InstallLocation)) continue;
-      games.push({ id: `epic-${manifest.InstallationGuid || manifest.AppName}`, name: manifest.DisplayName, category: 'Epic', platform: 'Epic Games', installPath: manifest.InstallLocation });
+      const executablePath = manifest.LaunchExecutable ? path.resolve(manifest.InstallLocation, manifest.LaunchExecutable) : findGameExecutable(manifest.InstallLocation, manifest.DisplayName);
+      games.push({ id: `epic-${manifest.InstallationGuid || manifest.AppName}`, name: manifest.DisplayName, category: 'Epic', platform: 'Epic Games', installPath: manifest.InstallLocation, executablePath: executablePath && fs.existsSync(executablePath) ? executablePath : findGameExecutable(manifest.InstallLocation, manifest.DisplayName) });
     } catch { /* Ignore invalid or partial Epic manifests */ }
   }
   return games;
@@ -176,7 +205,9 @@ function scanGog() {
       const id = `gog-${path.basename(block.match(/^HKEY_[^\\]+\\(.+)/i)?.[1] || installPath)}`;
       if (seen.has(id)) continue;
       seen.add(id);
-      games.push({ id, name, category: 'GOG', platform: 'GOG', installPath });
+      const exeValue = block.match(/(?:^|\n)\s*exe\s+REG_SZ\s+(.+)/i)?.[1]?.trim();
+      const executablePath = exeValue ? path.resolve(installPath, exeValue) : findGameExecutable(installPath, name);
+      games.push({ id, name, category: 'GOG', platform: 'GOG', installPath, executablePath: executablePath && fs.existsSync(executablePath) ? executablePath : findGameExecutable(installPath, name) });
     }
   }
   return games;
@@ -483,6 +514,13 @@ app.whenReady().then(() => {
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
   ipcMain.handle('games:artwork', (_event, query, appId) => lookupArtwork(query, appId));
+  ipcMain.handle('games:executable-icon', async (_event, executablePath) => {
+    if (process.platform !== 'win32' || typeof executablePath !== 'string' || path.extname(executablePath).toLowerCase() !== '.exe' || !path.isAbsolute(executablePath) || !fs.existsSync(executablePath)) return null;
+    try {
+      const icon = await app.getFileIcon(executablePath, { size: 'normal' });
+      return icon.isEmpty() ? null : icon.resize({ width: 128, height: 128 }).toDataURL();
+    } catch { return null; }
+  });
   ipcMain.handle('games:backup-artwork', (_event, query) => lookupBackupArtwork(query));
   createWindow();
   createTray();
