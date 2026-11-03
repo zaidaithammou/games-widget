@@ -15,6 +15,7 @@ const settingsPanel = document.getElementById('settingsPanel');
 const scannerPanel = document.getElementById('scannerPanel');
 const minimizeBtn = document.getElementById('minimizeBtn');
 const closeBtn = document.getElementById('closeBtn');
+const compactRestoreBtn = document.getElementById('compactRestoreBtn');
 
 // Initialize
 function init() {
@@ -99,21 +100,46 @@ function setupEventListeners() {
     minimizeBtn.addEventListener('click', () => window.gamesWidget.minimize());
     closeBtn.addEventListener('click', () => window.gamesWidget.close());
 
-    const widgetHeader = document.querySelector('.widget-header');
-    let dragPointerId = null;
-    widgetHeader.addEventListener('pointerdown', (event) => {
-        if (event.button !== 0 || event.target.closest('button, input, select')) return;
-        dragPointerId = event.pointerId;
-        widgetHeader.setPointerCapture(dragPointerId);
-        window.gamesWidget.beginDrag();
+    let suppressCompactClick = false;
+    function makeDraggable(handle, canStart) {
+        let pointerId = null;
+        let startX = 0;
+        let startY = 0;
+        let moved = false;
+        handle.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0 || !canStart(event)) return;
+            pointerId = event.pointerId;
+            startX = event.screenX;
+            startY = event.screenY;
+            moved = false;
+            handle.setPointerCapture(pointerId);
+            window.gamesWidget.beginDrag();
+        });
+        handle.addEventListener('pointermove', (event) => {
+            if (event.pointerId === pointerId && (Math.abs(event.screenX - startX) > 4 || Math.abs(event.screenY - startY) > 4)) moved = true;
+        });
+        const finishDrag = (event) => {
+            if (event.pointerId !== pointerId) return;
+            pointerId = null;
+            window.gamesWidget.endDrag();
+            if (handle === compactRestoreBtn && moved) {
+                suppressCompactClick = true;
+                setTimeout(() => { suppressCompactClick = false; }, 0);
+            }
+        };
+        handle.addEventListener('pointerup', finishDrag);
+        handle.addEventListener('pointercancel', finishDrag);
+    }
+    makeDraggable(document.querySelector('.widget-header'), (event) => !event.target.closest('button, input, select'));
+    makeDraggable(compactRestoreBtn, () => true);
+    compactRestoreBtn.addEventListener('click', (event) => {
+        if (suppressCompactClick) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
+        window.gamesWidget.minimize();
     });
-    const endWidgetDrag = (event) => {
-        if (dragPointerId !== event.pointerId) return;
-        dragPointerId = null;
-        window.gamesWidget.endDrag();
-    };
-    widgetHeader.addEventListener('pointerup', endWidgetDrag);
-    widgetHeader.addEventListener('pointercancel', endWidgetDrag);
     window.gamesWidget.onCompactState((compact) => {
         document.body.classList.toggle('compact', compact);
         minimizeBtn.textContent = compact ? '＋' : '−';
