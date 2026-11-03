@@ -57,6 +57,24 @@ Build artifacts are written to `build/`. Each versioned executable is kept in `b
 
 Use Git commits to record the **source-code changes** for every iteration. Before publishing, fill in that iteration's `versions/<version>/CHANGELOG.md` with the features added, changed, or removed. Use a version tag and a GitHub Release to publish that iteration's **downloadable Windows build**. A release should point to the commit that produced its executable.
 
+### Publish the recovered versions in order
+
+[`publish-history.ps1`](publish-history.ps1) publishes the reconstructed history one version at a time: it advances `main`, pushes the matching version tag, and creates a GitHub Release with that version's executable and changelog. The first version publishes immediately; each following version starts after a five-minute wait. With 14 versions, the sequence takes about 65 minutes plus upload time. The final repository-documentation commit is pushed after the last release.
+
+Create an **empty** GitHub repository (do not initialize it with a README or license), install GitHub CLI, and authenticate once with `gh auth login`. From PowerShell in this project, run:
+
+```powershell
+.\publish-history.ps1 "https://github.com/<YOUR-USERNAME>/<REPOSITORY>"
+```
+
+The script uses the repository link as its only required argument. It checks that the local branch is clean, validates every tag/snapshot/executable, refuses unexpected remote history, and can resume when the remote contains a chronological prefix of this same release sequence. It does not expose or store a token. Preview the actions first with:
+
+```powershell
+.\publish-history.ps1 "https://github.com/<YOUR-USERNAME>/<REPOSITORY>" -DryRun
+```
+
+Keep the computer and network available while it runs. GitHub authentication and permission to push/create releases are required.
+
 For each new iteration, after making and reviewing the source changes:
 
 ```powershell
