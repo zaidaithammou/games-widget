@@ -47,6 +47,43 @@ async function fetchExecutableIcons() {
     renderGames();
 }
 
+async function improveArtworkWithAI() {
+    const button = document.getElementById('enhanceArtworkBtn');
+    const status = document.getElementById('enhanceArtworkStatus');
+    const candidates = games.filter((game) => game.landscapeImage || game.coverImage || game.iconImage);
+    if (!candidates.length) {
+        status.textContent = 'Add games with cover artwork before using the AI upscaler.';
+        return;
+    }
+    button.disabled = true;
+    status.textContent = 'Loading the AI upscaler. The first download may take a few minutes…';
+    try {
+        const { upscaleArtwork } = await import('./image-enhancer.js');
+        for (let index = 0; index < candidates.length; index += 1) {
+            const game = candidates[index];
+            status.textContent = `Enhancing ${game.name} (${index + 1} of ${candidates.length})…`;
+            const original = game.landscapeImage || game.coverImage || game.iconImage;
+            const inputData = original.startsWith('data:image/')
+                ? original
+                : await window.gamesWidget.fetchArtworkData(original);
+            if (!inputData) continue;
+            const enhanced = await upscaleArtwork(inputData);
+            const savedImage = await window.gamesWidget.saveEnhancedArtwork(game.id, enhanced);
+            if (savedImage) {
+                game.enhancedImage = savedImage;
+                saveGames();
+                renderGames();
+            }
+        }
+        status.textContent = `Finished improving artwork for ${candidates.length} games.`;
+    } catch (error) {
+        console.error('AI artwork enhancement failed:', error);
+        status.textContent = `AI enhancement stopped: ${error.message || 'The model could not load.'}`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
 // Load Settings
 function loadSettings() {
     const savedStyle = localStorage.getItem('coverArtStyle');
@@ -107,6 +144,7 @@ async function fetchMissingArtwork() {
                 if (artwork.landscapeImage) {
                     game.coverImage = artwork.landscapeImage;
                     game.landscapeImage = artwork.landscapeImage;
+                    game.enhancedImage = null;
                 } else {
                     game.coverImage = game.coverImage || artwork.image;
                 }
@@ -206,6 +244,8 @@ function setupEventListeners() {
         updateCoverArtSettings();
         renderGames();
     });
+
+    document.getElementById('enhanceArtworkBtn').addEventListener('click', improveArtworkWithAI);
 
     // Settings
     settingsBtn.addEventListener('click', () => {
@@ -314,15 +354,21 @@ function createGameCard(game) {
     });
 
     const imageSource = coverArtStyle === 'icons'
-        ? (game.landscapeImage || game.coverImage)
+        ? (game.enhancedImage || game.landscapeImage || game.coverImage)
         : coverArtStyle === 'disks'
-            ? (game.appIconImage || game.iconImage || game.coverImage)
+            ? (game.enhancedImage || game.coverImage || game.landscapeImage || game.iconImage || game.appIconImage)
             : (game.coverImage || game.landscapeImage || game.iconImage || game.appIconImage);
     if (imageSource) {
         const img = document.createElement('img');
         img.src = imageSource;
         img.alt = game.name;
         img.onerror = async () => {
+            if (game.enhancedImage === imageSource) {
+                game.enhancedImage = null;
+                saveGames();
+                renderGames();
+                return;
+            }
             if (img.dataset.backupAttempted) {
                 if (game.coverImage === imageSource) game.coverImage = null;
                 if (game.iconImage === imageSource) game.iconImage = null;
@@ -342,6 +388,7 @@ function createGameCard(game) {
                 const backup = await window.gamesWidget.findBackupArtwork(game.name);
                 if (backup?.image) {
                     game.coverImage = backup.image;
+                    game.enhancedImage = null;
                     if (backup.landscapeImage) game.landscapeImage = backup.landscapeImage;
                     game.iconImage = backup.iconImage || backup.image;
                     game.artworkSource = backup.source || game.artworkSource;
