@@ -228,6 +228,11 @@ while ($nextIndex -lt $versionTags.Count) {
     $commit = $releaseCommits[$tag]
     $tagRef = "refs/tags/$tag"
 
+    if ($hasPreviouslyPublishedRelease -and $tag -notin $remoteReleaseTags) {
+        Write-Host 'Waiting 5 minutes before publishing the next version...'
+        Start-Sleep -Seconds $releaseIntervalSeconds
+    }
+
     if ($nextIndex -gt $mainCommitIndex) {
         Write-Host "Publishing $tag commit to main..."
         Invoke-Git -Arguments @('push', 'origin', "$commit`:refs/heads/main")
@@ -241,11 +246,6 @@ while ($nextIndex -lt $versionTags.Count) {
     }
 
     if ($tag -notin $remoteReleaseTags) {
-        if ($hasPreviouslyPublishedRelease) {
-            Write-Host 'Waiting 5 minutes before publishing the next version...'
-            Start-Sleep -Seconds $releaseIntervalSeconds
-        }
-
         $asset = Join-Path $projectRoot "build\versions\$version\Games Widget $version.exe"
         $notes = Join-Path $projectRoot "versions\$version\CHANGELOG.md"
         Write-Host "Creating GitHub Release $tag with its Windows executable..."
