@@ -14,14 +14,16 @@
             </button>
             <!-- Window Controls -->
             <div class="window-controls">
-                <button class="control-btn minimize-btn" id="minimizeBtn">−</button>
-                <button class="control-btn close-btn" id="closeBtn">×</button>
+                <img class="window-menu-icon" src="../assets/icon.png" alt="Games Widget">
+                <div class="window-control-buttons">
+                    <button class="control-btn minimize-btn" id="minimizeBtn">−</button>
+                    <button class="control-btn close-btn" id="closeBtn">×</button>
+                </div>
             </div>
 
             <!-- Widget Header -->
             <div class="widget-header">
                 <div class="widget-brand">
-                    <img class="widget-brand-icon" src="../assets/icon.png" alt="">
                     <h1>My Game Library</h1>
                 </div>
                 <div class="header-controls">
@@ -47,6 +49,26 @@
             <!-- Games Grid -->
             <div class="games-grid" id="gamesGrid">
                 <!-- Games will be dynamically inserted here -->
+            </div>
+
+            <!-- Edit Game Panel -->
+            <div class="settings-panel edit-game-panel" id="editGamePanel" style="display: none;">
+                <form class="edit-game-content" id="editGameForm">
+                    <h2>Edit Game</h2>
+                    <label for="editGameName">Displayed name</label>
+                    <input id="editGameName" name="editGameName" type="text" maxlength="100" required>
+                    <label>Custom wallpaper</label>
+                    <div class="edit-wallpaper-preview" id="editWallpaperPreviewWrap">
+                        <img id="editWallpaperPreview" alt="Wallpaper preview">
+                        <span id="editWallpaperPlaceholder">No custom wallpaper selected</span>
+                    </div>
+                    <button class="btn btn-secondary" id="chooseWallpaperBtn" type="button">Choose Image…</button>
+                    <p class="group-form-status" id="editGameStatus" role="status" aria-live="polite"></p>
+                    <div class="settings-actions">
+                        <button class="btn btn-secondary" id="cancelEditGameBtn" type="button">Cancel</button>
+                        <button class="btn btn-primary" type="submit">Save</button>
+                    </div>
+                </form>
             </div>
 
             <!-- Settings Panel (Hidden by default) -->
