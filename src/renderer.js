@@ -28,17 +28,22 @@ function init() {
 }
 
 async function fetchExecutableIcons() {
-    await Promise.all(games.filter((game) => game.executablePath).map(async (game) => {
+    let changed = false;
+    await Promise.all(games.filter((game) => game.executablePath || game.installPath).map(async (game) => {
         try {
-            const icon = await window.gamesWidget.getExecutableIcon(game.executablePath);
-            if (icon && game.iconImage !== icon) {
-                game.iconImage = icon;
-                saveGames();
+            const result = await window.gamesWidget.getExecutableIcon(game.executablePath, game.installPath, game.name);
+            if (result?.image) {
+                if (game.executablePath !== result.executablePath || game.iconImage !== result.image) {
+                    game.executablePath = result.executablePath;
+                    game.iconImage = result.image;
+                    changed = true;
+                }
             }
         } catch (error) {
             console.warn(`Could not load the executable icon for ${game.name}:`, error);
         }
     }));
+    if (changed) saveGames();
     renderGames();
 }
 
@@ -698,8 +703,11 @@ async function addSelectedGames() {
         if (existingGame) {
             if (foundGame.executablePath) existingGame.executablePath = foundGame.executablePath;
             try {
-                const icon = existingGame.executablePath && await window.gamesWidget.getExecutableIcon(existingGame.executablePath);
-                if (icon) existingGame.iconImage = icon;
+                const result = await window.gamesWidget.getExecutableIcon(existingGame.executablePath, existingGame.installPath, existingGame.name);
+                if (result?.image) {
+                    existingGame.executablePath = result.executablePath;
+                    existingGame.iconImage = result.image;
+                }
             } catch { /* Keep the existing cover art when the executable has no extractable icon. */ }
             return null;
         }
@@ -721,6 +729,15 @@ async function addSelectedGames() {
             executablePath: foundGame.executablePath || null,
             group: null
         };
+        if (newGame.executablePath || newGame.installPath) {
+            try {
+                const result = await window.gamesWidget.getExecutableIcon(newGame.executablePath, newGame.installPath, newGame.name);
+                if (result?.image) {
+                    newGame.executablePath = result.executablePath;
+                    newGame.iconImage = result.image;
+                }
+            } catch { /* Keep store artwork if Windows cannot extract an executable icon. */ }
+        }
         return newGame;
     }));
     games.push(...newEntries.filter(Boolean));
