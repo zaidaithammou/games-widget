@@ -9,6 +9,8 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **Installed Game Scanning**: Read installed game records from Steam, Epic Games, and GOG
 - **Automatic Cover Art**: Try Steam, then Epic Games Store and EGDATA artwork; fill missing covers in the existing library
 - **Cover Art Styles**: Choose Disks or Icons, with Icons showing fitted game artwork
+- **AI Artwork Upscaling**: Locally upscale the saved game artwork with Swin2SR to improve small or compressed images
+- **Compact Game Cards**: Keep each row sized to the game cards, even when a row has only one or two games
 - **Quick Removal**: Remove games from the library with the button on each game card or its right-click menu
 - **Saved Library**: Keep the game list in the app's local data file and restore it whenever the widget opens
 - **Game Launching**: Start a game with the Play button on its card

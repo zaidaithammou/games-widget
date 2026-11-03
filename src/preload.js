@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('gamesWidget', {
   findArtwork: (query, appId) => ipcRenderer.invoke('games:artwork', query, appId),
   loadGames: () => ipcRenderer.invoke('games:load'),
   saveGames: (games) => ipcRenderer.send('games:save', games),
+  fetchArtworkData: (url) => ipcRenderer.invoke('games:fetch-artwork-data', url),
+  saveEnhancedArtwork: (gameId, dataUrl) => ipcRenderer.invoke('games:save-enhanced-artwork', gameId, dataUrl),
   launchGame: (game) => ipcRenderer.invoke('games:launch', game),
   getExecutableIcon: (executablePath, installPath, gameName) => ipcRenderer.invoke('games:executable-icon', executablePath, installPath, gameName),
   findBackupArtwork: (query) => ipcRenderer.invoke('games:backup-artwork', query),

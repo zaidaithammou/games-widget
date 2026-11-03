@@ -3,6 +3,8 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
 const { spawn } = require('node:child_process');
+const { createHash } = require('node:crypto');
+const { pathToFileURL } = require('node:url');
 
 let mainWindow;
 let tray;
@@ -15,6 +17,7 @@ let dragOrigin;
 const artworkLookupCache = new Map();
 const settingsPath = () => path.join(app.getPath('userData'), 'widget-settings.json');
 const libraryPath = () => path.join(app.getPath('userData'), 'games-library.json');
+const enhancedArtworkDir = () => path.join(app.getPath('userData'), 'enhanced-artwork');
 
 function readSettings() {
   try { return JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch { return {}; }
@@ -561,6 +564,36 @@ app.whenReady().then(() => {
       fs.mkdirSync(app.getPath('userData'), { recursive: true });
       fs.writeFileSync(libraryPath(), JSON.stringify(library), 'utf8');
     } catch (error) { console.error('Could not save the game library:', error); }
+  });
+  ipcMain.handle('games:fetch-artwork-data', async (_event, imageUrl) => {
+    try {
+      const parsed = new URL(imageUrl);
+      const allowedHost = ['steamstatic.com', 'steampowered.com', 'epicgames.com', 'egdata.app', 'unrealengine.com'].some((domain) => parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`));
+      if (parsed.protocol !== 'https:' || !allowedHost) return null;
+      const response = await fetch(parsed, { signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'GamesWidget/1.0' } });
+      const type = response.headers.get('content-type') || '';
+      if (!response.ok || !type.toLowerCase().startsWith('image/')) return null;
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (!bytes.length || bytes.length > 12 * 1024 * 1024) return null;
+      return `data:${type.split(';')[0]};base64,${bytes.toString('base64')}`;
+    } catch { return null; }
+  });
+  ipcMain.handle('games:save-enhanced-artwork', (_event, gameId, dataUrl) => {
+    if (typeof gameId !== 'string' || typeof dataUrl !== 'string') return null;
+    const match = dataUrl.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) return null;
+    try {
+      const bytes = Buffer.from(match[1], 'base64');
+      if (!bytes.length || bytes.length > 15 * 1024 * 1024) return null;
+      const safeId = createHash('sha256').update(gameId).digest('hex');
+      fs.mkdirSync(enhancedArtworkDir(), { recursive: true });
+      const filePath = path.join(enhancedArtworkDir(), `${safeId}.png`);
+      fs.writeFileSync(filePath, bytes);
+      return pathToFileURL(filePath).href;
+    } catch (error) {
+      console.error('Could not save AI-enhanced game artwork:', error);
+      return null;
+    }
   });
   ipcMain.handle('games:launch', async (_event, game) => {
     if (!game || typeof game !== 'object') return { ok: false, error: 'Invalid game entry.' };
