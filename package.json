@@ -8,8 +8,8 @@
     "dev": "electron . --dev",
     "build": "electron-builder",
     "build:portable": "electron-builder --win portable --x64",
-    "test": "electron test.js",
-    "simple": "electron test.js"
+    "test": "electron legacy/test.js",
+    "simple": "electron legacy/test.js"
   },
   "keywords": [
     "electron",

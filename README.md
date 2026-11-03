@@ -1,142 +1,139 @@
 # Games Widget
 
-A Windows desktop overlay for displaying and managing your game library. It runs as a small frameless Electron window with a system tray icon, so it can stay open while you use other apps.
+Games Widget is a lightweight Windows desktop companion for organizing and launching installed PC games. It runs as a movable, resizable, always-on-top Electron widget and can stay minimized as a compact desktop icon.
 
 ## Features
 
-- **Persistent Desktop Widget**: Frameless, always-on-top window with no taskbar button
-- **System Tray Controls**: Show, hide, open settings, or quit from the tray menu; `Ctrl+Alt+G` toggles visibility
-- **Installed Game Scanning**: Read installed game records from Steam, Epic Games, and GOG
-- **Automatic Cover Art**: Try Steam, then Epic Games Store and EGDATA artwork; fill missing covers in the existing library
-- **Cover Art Styles**: Choose Disks or Icons, with Icons showing fitted game artwork
-- **Compact Game Cards**: Keep each row sized to the game cards, even when a row has only one or two games
-- **Window Size and Placement Limits**: Keep the full widget on a display, with an expanded size range of 520 × 460 through 960 × 540 pixels
-- **Launcher and Custom Group Folders**: Sort into animated folders by launcher or assign games to user-created groups
-- **Quick Removal**: Remove games from the library with the button on each game card or its right-click menu
-- **Saved Library**: Keep the game list in the app's local data file and restore it whenever the widget opens
-- **Game Launching**: Start a game with the Play button on its card
-- **Drag & Drop Relocation**: Drag the header to move the widget; its position and size are saved
-- **Compact Mode**: The minimize button leaves a small movable app icon on screen; click it to expand the widget
-- **Resize Functionality**: Customize the widget size when open
-- **Multiple Cover Art Styles**: Choose full-fit Icons or Disks
-- **Sorting Options**: Sort games by name, category, or user-created groups
-- **User Groups**: Create custom groups to organize your games
-- **Modern UI**: Beautiful gradient design with smooth animations
+- **Scan installed games** from Steam, Epic Games, and GOG, then choose which detected games to add.
+- **Disk View** presents game artwork in circular disc cards.
+- **Icon / Wallpaper View** displays fitted landscape artwork in each game card.
+- **Artwork lookup** searches available Steam and Epic Games Store sources, with a backup provider for titles that are missing artwork.
+- **Custom game artwork** lets you choose a local image for an individual game. The image is copied into the app's user data so it remains available after restart.
+- **Game editing** lets you change a game's displayed name and custom wallpaper while retaining its original launcher identity for artwork and launching.
+- **Game launching** supports Steam links, Epic Games Launcher links, and installed executable paths when available.
+- **Launcher folders and custom groups** organize games by Steam, Epic Games, GOG, or groups you create. Right-click a game to move it to a custom group; choose **Sort by Group** to browse folder-style groups.
+- **Persistent library and settings** restore saved games, user groups, artwork choices, and widget placement after restart.
+- **Widget controls** include drag-to-move, resize limits, minimize-to-compact-icon, restore, and a system tray menu.
+- **Windows app icon** uses the custom Games Widget artwork in the app and tray.
 
-## Installation
+## Requirements
 
-1. **Install Node.js**: Make sure Node.js is installed and added to your PATH
-   - Download from: https://nodejs.org/
-   - Install the LTS version
+- Windows 10 or Windows 11
+- Node.js LTS and npm (for running from source or building)
+- Internet access for online artwork lookup
 
-2. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
+## Run from source
 
-## Running the Widget
+Open PowerShell in the project directory and run:
 
-**Development Mode**:
-```bash
-npm run dev
-```
-
-**Production Mode**:
-```bash
+```powershell
+npm install
 npm start
 ```
 
-## Building for Distribution
+For development mode with the app's developer tools enabled:
 
-```bash
+```powershell
+npm run dev
+```
+
+## Build for Windows
+
+Create the Windows installer:
+
+```powershell
 npm run build
 ```
 
-This creates a Windows installer in the project `build` folder. To create a standalone portable application that you can double-click without installing, run:
+Create a portable x64 executable that can be run directly:
 
-```bash
+```powershell
 npm run build:portable
 ```
 
-The portable `.exe` is written to `build`.
+Build artifacts are written to `build/`. Each versioned executable is kept in `build/versions/<version>/`; these generated files remain excluded from Git. The `versions/` directory contains the recovered app source and change notes for each iteration. Publish the matching executable as a GitHub Release asset rather than committing large binaries to the source repository.
 
-## Usage
+## Track each iteration on GitHub
 
-### Basic Controls
+Use Git commits to record the **source-code changes** for every iteration. Before publishing, fill in that iteration's `versions/<version>/CHANGELOG.md` with the features added, changed, or removed. Use a version tag and a GitHub Release to publish that iteration's **downloadable Windows build**. A release should point to the commit that produced its executable.
 
-- **System Tray**: Right-click the tray icon to show/hide the widget or access settings
-- **User Groups**: Custom groups and group assignments persist across restarts in the app's user data
-- **Drag**: Click and drag the widget header to move it around your desktop
-- **Resize**: Drag the edges/corners to resize the widget
-- **Close Button**: Hides the widget (doesn't quit the application)
+For each new iteration, after making and reviewing the source changes:
 
-### Adding Games
-
-1. Click the "🎮 Scan Games" button
-2. Select which platforms to scan (Steam, Epic Games, GOG)
-3. Click "Start Scan"
-4. Select the games you want to add from the results
-5. Click "Add Selected"
-
-When adding a detected game, the widget tries an exact Steam Store title match, then an Epic Games Store catalog match, then EGDATA. This gives Epic-only titles such as Fortnite additional artwork sources. It also tries to fill missing covers for games already in the library. Names must match so it does not silently assign artwork for a different game.
-
-### Customizing Appearance
-
-1. Click the "⚙️ Settings" button
-2. Choose your preferred cover art style (Disks or Icons)
-3. Create custom groups to organize your games
-4. Click "Save" to apply changes
-
-### Sorting Games
-
-Use the dropdown menu to sort games by:
-- **Name**: Alphabetical order
-- **Category**: Game genre
-- **Group**: User-created groups
-
-### Managing Games
-
-- **Launch**: Click on a game card to launch it
-- **Edit**: Right-click a game and select "Edit" to rename it
-- **Remove**: Right-click a game and select "Remove" to delete it from your library
-
-## Project Structure
-
+```powershell
+git add -A
+git diff --cached --check
+git commit -m "feat: describe the iteration"
+git push origin main
 ```
-games-widget/
-├── assets/
-│   ├── icon.png          # System tray icon
-│   └── icon.ico          # Windows application icon
+
+After building the app and updating its version in `package.json`, tag that commit and push the tag. For example, from PowerShell:
+
+```powershell
+git tag -a v1.1.4 -m "Games Widget 1.1.4"
+git push origin v1.1.4
+gh release create v1.1.4 "build/versions/1.1.4/Games Widget 1.1.4.exe" --title "Games Widget 1.1.4" --notes-file "versions/1.1.4/CHANGELOG.md"
+```
+
+Replace the example version with the new version, create its `versions/<version>/CHANGELOG.md`, and put its built executable in `build/versions/<version>/`. Install GitHub CLI (`gh`) and authenticate with `gh auth login` to use the release command. You can also create a release on GitHub's **Releases** page, select the matching tag, and upload the `.exe` from its version folder there.
+
+Keep `build/` out of ordinary Git commits. GitHub Releases are the right place for the large `.exe` files; the repository history should contain the source, documentation, and assets needed to build them.
+
+## Use the widget
+
+1. Select **Scan Games**, choose the launchers to scan, and add the games you want in the library.
+2. Use the view selector to switch between **Disks** and **Icons** (fitted wallpaper artwork).
+3. Open **Settings** to create custom groups. Right-click a game and choose **Move to Group…** to assign it. Select **Sort by Group** to see the launcher and custom folders.
+4. Right-click a game and choose **Edit** to change its displayed name or select a custom wallpaper. Choose **Save** to keep the changes.
+5. Start a game with its **Play** button or the right-click **Launch** command.
+6. Drag the top bar to reposition the widget and drag its edges to resize it. Minimize leaves a small movable icon; click the icon to restore the widget.
+7. Use the system tray menu to show the widget, open settings, hide it, or quit. `Ctrl+Alt+G` toggles widget visibility.
+
+## Project structure
+
+```text
+Games Widget/
+├── assets/                 # Runtime tray icon and Windows application icon
+├── build/                  # Generated installers and executables (ignored by Git)
+├── img/                    # Original supplied artwork assets
+├── legacy/
+│   ├── main.js              # Earliest standalone Electron entry point
+│   ├── simple.html          # Minimal Electron smoke-test page
+│   ├── test.js              # Minimal Electron smoke-test entry point
+│   └── web-widget.html      # Earlier standalone web prototype
+├── versions/                # Recovered source snapshots and changelogs per version
+├── node_modules/           # Installed npm dependencies (ignored by Git)
 ├── src/
-│   ├── main.js           # Electron window and tray
-│   ├── preload.js        # Limited renderer-to-window controls
-│   ├── index.html        # HTML structure
-│   ├── styles.css        # CSS styling
-│   └── renderer.js       # Frontend logic
-├── package.json          # Project configuration
-└── README.md            # This file
+│   ├── main.js              # Electron window, game scanning/launching, persistence, native dialogs
+│   ├── preload.js           # Limited and explicit renderer IPC API
+│   ├── index.html           # Widget and settings markup
+│   ├── renderer.js          # Library, groups, artwork, and interaction logic
+│   └── styles.css           # Widget styling and layout
+├── .gitignore
+├── package.json
+├── package-lock.json
+└── README.md
 ```
 
-## Technology Stack
+The Electron app stores the library, user groups, settings, and imported wallpapers under Electron's per-user `app.getPath('userData')` directory. These local files are not part of the Git repository.
 
-- **Electron**: Windows desktop window and system tray
-- **Vanilla JavaScript**: Lightweight and fast
-- **CSS3**: Modern styling with gradients and animations
-- **localStorage**: For persisting the game library and appearance settings
+The [`versions/`](versions/README.md) directory contains the packaged app source recovered from each available build, with a changelog describing the differences. The release-by-release Git history is reconstructed from those installers and the available development notes; it is not the original commit history. The snapshots are for review, and the current working source remains under `src/`.
 
-## Future Enhancements
+## Technology
 
-- Launching installed games from their detected install paths
-- Broader artwork sources for games that are not listed on Steam
-- Game launching with actual executable paths
-- Cloud sync for game library across devices
-- Custom themes and color schemes
-- Game statistics and play time tracking
+- Electron 32
+- Node.js
+- HTML, CSS, and vanilla JavaScript
+- Electron IPC with context isolation for renderer-to-main-process operations
+- `electron-builder` for Windows installer and portable builds
+
+## Development notes
+
+- `npm start` launches the Windows desktop app from source.
+- `npm run build` produces the installer configured in `package.json`.
+- `npm run build:portable` creates the portable x64 Windows build.
+- `npm test` opens the minimal Electron smoke-test window from `legacy/`; it is not an automated test suite for the game library.
+- Artwork providers and launcher installation records can change independently of the widget code. Keep provider failures graceful so the library remains usable when a lookup source is unavailable.
 
 ## License
 
-MIT
-
-## Contributing
-
-Feel free to submit issues and enhancement requests!
+Coming Soon
