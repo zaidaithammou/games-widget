@@ -74,7 +74,7 @@ async function fetchMissingArtwork() {
     let changed = false;
     await Promise.all(withoutArtwork.map(async (game) => {
         try {
-            const artwork = await window.gamesWidget.findSteamArtwork(game.name, game.steamAppId);
+            const artwork = await window.gamesWidget.findArtwork(game.name, game.steamAppId);
             if (artwork?.image) {
                 game.coverImage = artwork.image;
                 game.steamAppId = game.steamAppId || artwork.appid;
@@ -264,7 +264,29 @@ function createGameCard(game) {
         const img = document.createElement('img');
         img.src = game.coverImage;
         img.alt = game.name;
-        img.onerror = () => {
+        img.onerror = async () => {
+            if (img.dataset.backupAttempted) {
+                game.coverImage = null;
+                saveGames();
+                img.style.display = 'none';
+                cover.textContent = getGameEmoji(game.category);
+                return;
+            }
+            img.dataset.backupAttempted = 'true';
+            try {
+                const backup = await window.gamesWidget.findBackupArtwork(game.name);
+                if (backup?.image) {
+                    game.coverImage = backup.image;
+                    game.artworkSource = backup.source;
+                    saveGames();
+                    renderGames();
+                    return;
+                }
+            } catch (error) {
+                console.warn(`Backup artwork lookup failed for ${game.name}:`, error);
+            }
+            game.coverImage = null;
+            saveGames();
             img.style.display = 'none';
             cover.textContent = getGameEmoji(game.category);
         };
@@ -623,7 +645,7 @@ async function addSelectedGames() {
         );
         if (alreadyAdded) return null;
         let artwork = null;
-        try { artwork = await window.gamesWidget.findSteamArtwork(foundGame.name, foundGame.steamAppId); }
+        try { artwork = await window.gamesWidget.findArtwork(foundGame.name, foundGame.steamAppId); }
         catch (error) { console.warn(`Could not find Steam artwork for ${foundGame.name}:`, error); }
         const newGame = {
             id: foundGame.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

@@ -225,6 +225,53 @@ async function findSteamArtwork(query, knownAppId) {
   return item.tiny_image ? { appid: item.id, name: item.name, image: item.tiny_image } : null;
 }
 
+async function findEpicArtwork(query) {
+  const term = String(query || '').trim().slice(0, 100);
+  if (term.length < 2) return null;
+  const queryText = `query SearchStore($keywords: String, $count: Int, $country: String!, $locale: String) {
+    Catalog { searchStore(keywords: $keywords, count: $count, country: $country, locale: $locale) {
+      elements { title keyImages { type url } }
+    } }
+  }`;
+  const response = await fetch('https://store.epicgames.com/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Origin': 'https://store.epicgames.com',
+      'Referer': 'https://store.epicgames.com/en-US/browse',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/132.0.0.0 Safari/537.36'
+    },
+    body: JSON.stringify({
+      query: queryText,
+      variables: { keywords: term, count: 8, country: 'US', locale: 'en-US' }
+    }),
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!response.ok) throw new Error(`Epic Store returned HTTP ${response.status}`);
+  const data = await response.json();
+  const normalizedTerm = term.toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const result = (data.data?.Catalog?.searchStore?.elements || []).find((item) =>
+    item.title?.toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() === normalizedTerm
+  );
+  if (!result) return null;
+  const images = result.keyImages || [];
+  const preferredTypes = ['OfferImageTall', 'DieselGameBoxTall', 'Thumbnail', 'DieselStoreFrontTall', 'OfferImageWide', 'DieselStoreFrontWide'];
+  const image = preferredTypes.map((type) => images.find((candidate) => candidate.type === type)?.url).find(Boolean)
+    || images.find((candidate) => candidate.url)?.url;
+  return image ? { name: result.title, image, source: 'Epic Games Store' } : null;
+}
+
+async function findArtwork(query, knownAppId) {
+  try {
+    const steam = await findSteamArtwork(query, knownAppId);
+    if (steam) return { ...steam, source: 'Steam' };
+  } catch (error) {
+    console.warn(`Steam artwork lookup failed for ${query}:`, error.message);
+  }
+  return findEpicArtwork(query);
+}
+
 function createWindow() {
   expandedBounds = getInitialBounds();
   mainWindow = new BrowserWindow({
@@ -290,7 +337,8 @@ app.whenReady().then(() => {
   ipcMain.on('widget:drag-start', beginDrag);
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
-  ipcMain.handle('steam:artwork', (_event, query, appId) => findSteamArtwork(query, appId));
+  ipcMain.handle('games:artwork', (_event, query, appId) => findArtwork(query, appId));
+  ipcMain.handle('games:backup-artwork', (_event, query) => findEpicArtwork(query));
   createWindow();
   createTray();
   globalShortcut.register('CommandOrControl+Alt+G', () => mainWindow?.isVisible() ? mainWindow.hide() : showWidget());

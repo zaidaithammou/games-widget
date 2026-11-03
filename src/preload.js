@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('gamesWidget', {
   beginDrag: () => ipcRenderer.send('widget:drag-start'),
   endDrag: () => ipcRenderer.send('widget:drag-end'),
   scanInstalledGames: (platforms) => ipcRenderer.invoke('games:scan', platforms),
-  findSteamArtwork: (query, appId) => ipcRenderer.invoke('steam:artwork', query, appId),
+  findArtwork: (query, appId) => ipcRenderer.invoke('games:artwork', query, appId),
+  findBackupArtwork: (query) => ipcRenderer.invoke('games:backup-artwork', query),
   onCompactState: (callback) => ipcRenderer.on('widget:compact-state', (_event, compact) => callback(compact)),
   onOpenSettings: (callback) => ipcRenderer.on('open-settings', callback)
 });
