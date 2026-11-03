@@ -24,6 +24,22 @@ function init() {
     setupEventListeners();
     renderGames();
     fetchMissingArtwork();
+    fetchExecutableIcons();
+}
+
+async function fetchExecutableIcons() {
+    await Promise.all(games.filter((game) => game.executablePath).map(async (game) => {
+        try {
+            const icon = await window.gamesWidget.getExecutableIcon(game.executablePath);
+            if (icon && game.iconImage !== icon) {
+                game.iconImage = icon;
+                saveGames();
+            }
+        } catch (error) {
+            console.warn(`Could not load the executable icon for ${game.name}:`, error);
+        }
+    }));
+    renderGames();
 }
 
 // Load Settings
@@ -271,6 +287,17 @@ function createGameCard(game) {
     const cover = document.createElement('div');
     cover.className = `game-cover style-${coverArtStyle}`;
 
+    const removeButton = document.createElement('button');
+    removeButton.className = 'game-remove-btn';
+    removeButton.type = 'button';
+    removeButton.textContent = '×';
+    removeButton.title = `Remove ${game.name}`;
+    removeButton.setAttribute('aria-label', `Remove ${game.name} from library`);
+    removeButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        removeGame(game);
+    });
+
     const imageSource = coverArtStyle === 'wallpaper'
         ? (game.landscapeImage || game.coverImage)
         : (game.iconImage || game.coverImage);
@@ -342,6 +369,7 @@ function createGameCard(game) {
 
     card.appendChild(cover);
     card.appendChild(info);
+    card.appendChild(removeButton);
 
     // Click to launch game (placeholder)
     card.addEventListener('click', () => {
@@ -663,11 +691,18 @@ async function addSelectedGames() {
     addButton.textContent = 'Fetching artwork…';
     const newEntries = await Promise.all([...selectedFoundGames].map(async (index) => {
         const foundGame = foundGames[index];
-        const alreadyAdded = games.some((game) =>
+        const existingGame = games.find((game) =>
             (foundGame.steamAppId && String(game.steamAppId) === String(foundGame.steamAppId)) ||
             (game.platform === foundGame.platform && game.installPath && game.installPath === foundGame.installPath)
         );
-        if (alreadyAdded) return null;
+        if (existingGame) {
+            if (foundGame.executablePath) existingGame.executablePath = foundGame.executablePath;
+            try {
+                const icon = existingGame.executablePath && await window.gamesWidget.getExecutableIcon(existingGame.executablePath);
+                if (icon) existingGame.iconImage = icon;
+            } catch { /* Keep the existing cover art when the executable has no extractable icon. */ }
+            return null;
+        }
         let artwork = null;
         try { artwork = await window.gamesWidget.findArtwork(foundGame.name, foundGame.steamAppId); }
         catch (error) { console.warn(`Could not find Steam artwork for ${foundGame.name}:`, error); }
@@ -683,6 +718,7 @@ async function addSelectedGames() {
             artworkChecked: true,
             artworkSource: artwork?.source || null,
             installPath: foundGame.installPath,
+            executablePath: foundGame.executablePath || null,
             group: null
         };
         return newGame;

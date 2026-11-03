@@ -208,6 +208,7 @@ select option {
 
 /* Game Card */
 .game-card {
+    position: relative;
     background: rgba(255, 255, 255, 0.035);
     border-radius: 12px;
     padding: 12px;
@@ -219,6 +220,28 @@ select option {
     align-items: center;
     text-align: center;
 }
+
+.game-remove-btn {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    z-index: 5;
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    background: rgba(17, 22, 34, 0.82);
+    color: #fff;
+    font: 20px/20px 'Segoe UI', sans-serif;
+    cursor: pointer;
+    opacity: 0.82;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.game-card:hover .game-remove-btn,
+.game-remove-btn:focus-visible { opacity: 1; }
+
+.game-remove-btn:hover { background: #d64050; }
 
 .game-card:hover {
     transform: translateY(-4px);
