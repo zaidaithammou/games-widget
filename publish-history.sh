@@ -81,6 +81,7 @@ done
 head_commit=$(git rev-parse HEAD)
 git merge-base --is-ancestor "$previous_commit" "$head_commit" ||
     fail "The current main branch does not contain the latest release commit."
+latest_tag=${version_tags[${#version_tags[@]} - 1]}
 
 if [[ $dry_run == false ]]; then
     gh auth status --hostname github.com >/dev/null ||
@@ -138,11 +139,8 @@ done
 ((${#remote_tag_indexes[@]} <= main_commit_index + 1)) ||
     fail "The remote has a version tag whose commit is not published to main."
 
-remote_release_output=""
-if [[ $dry_run == false ]]; then
-    remote_release_output=$(gh release list --repo "$repository_slug" --limit 1000 --json tagName) ||
-        fail "Could not list releases for $repository_slug."
-fi
+remote_release_output=$(gh release list --repo "$repository_slug" --limit 1000 --json tagName) ||
+    fail "Could not list releases for $repository_slug."
 mapfile -t remote_release_tags < <(
     if [[ -n $remote_release_output ]]; then
         node -e 'for (const r of JSON.parse(process.argv[1])) console.log(r.tagName)' "$remote_release_output" |
@@ -158,11 +156,66 @@ for position in "${!remote_release_tags[@]}"; do
 done
 
 if [[ $dry_run == true ]]; then
-    printf 'Dry run for %s. First missing release is immediate; following releases wait five minutes.\n' "$repository_slug"
+    printf 'Dry run for %s. No remote changes will be made.\n' "$repository_slug"
+    if [[ -n ${remote_refs[refs/heads/main]:-} ]]; then
+        printf 'Remote main: %s\n' "$(git describe --tags --exact-match "${remote_refs[refs/heads/main]}" 2>/dev/null || echo 'commit not at a version tag')"
+    else
+        printf 'Remote main: empty\n'
+    fi
+    printf 'Existing version tags:'
+    found_tag=false
     for tag in "${version_tags[@]}"; do
-        printf 'Would publish %s commit, tag, changelog, and Windows executable.\n' "$tag"
+        if [[ -n ${remote_refs[refs/tags/$tag]:-} ]]; then
+            printf ' %s' "$tag"
+            found_tag=true
+        fi
     done
-    printf 'Would then push the final repository documentation commit. No remote changes made.\n'
+    if [[ $found_tag == false ]]; then
+        printf ' none'
+    fi
+    printf '\n'
+    if ((${#remote_release_tags[@]})); then
+        printf 'Existing GitHub Releases: %s\n' "${remote_release_tags[*]}"
+    else
+        printf 'Existing GitHub Releases: none\n'
+    fi
+
+    planned_release=false
+    for index in "${!version_tags[@]}"; do
+        tag=${version_tags[$index]}
+        version=${tag#v}
+        ref="refs/tags/$tag"
+        release_exists=false
+        for existing_tag in "${remote_release_tags[@]}"; do
+            [[ $existing_tag == "$tag" ]] && release_exists=true
+        done
+
+        actions=()
+        if (( index > main_commit_index )); then
+            actions+=("push commit to main")
+        fi
+        if [[ -z ${remote_refs[$ref]:-} ]]; then
+            actions+=("push tag")
+        fi
+        if [[ $release_exists == false ]]; then
+            if [[ $planned_release == true || ${#remote_release_tags[@]} -gt 0 ]]; then
+                actions+=("wait 5 minutes, then create GitHub Release with exe and changelog")
+            else
+                actions+=("create GitHub Release with exe and changelog (first pending release is immediate)")
+            fi
+            planned_release=true
+        fi
+
+        if ((${#actions[@]})); then
+            printf 'Would %s: %s.\n' "$tag" "$(IFS='; '; echo "${actions[*]}")"
+        else
+            printf 'Would skip %s: commit, tag, and release already published.\n' "$tag"
+        fi
+    done
+
+    if [[ $head_commit != "${release_commits[$latest_tag]}" && ${remote_refs[refs/heads/main]:-} != "$head_commit" ]]; then
+        printf 'Would finally push the repository documentation commit to main.\n'
+    fi
     exit 0
 fi
 
@@ -218,7 +271,6 @@ for index in "${!version_tags[@]}"; do
     printf 'Finished %s.\n' "$tag"
 done
 
-latest_tag=${version_tags[${#version_tags[@]} - 1]}
 if [[ $head_commit != "${release_commits[$latest_tag]}" ]]; then
     if [[ ${remote_refs[refs/heads/main]:-} != "$head_commit" ]]; then
         printf 'Publishing final repository documentation commit...\n'
