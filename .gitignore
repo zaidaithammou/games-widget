@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Generated installers, unpacked apps, and portable builds
+build/
+dist/
+out/
+release/
+
+# Local secrets and developer-specific environment files
+.env
+.env.*
+!.env.example
+
+# Logs and test output
+*.log
+npm-debug.log*
+coverage/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
