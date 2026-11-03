@@ -183,10 +183,43 @@ function scanEpic() {
       if (manifest.bIsIncomplete || manifest.bIsIncompleteInstall || !manifest.bIsApplication || !manifest.DisplayName || !manifest.InstallLocation) continue;
       if (!fs.existsSync(manifest.InstallLocation)) continue;
       const executablePath = manifest.LaunchExecutable ? path.resolve(manifest.InstallLocation, manifest.LaunchExecutable) : findGameExecutable(manifest.InstallLocation, manifest.DisplayName);
-      games.push({ id: `epic-${manifest.InstallationGuid || manifest.AppName}`, name: manifest.DisplayName, category: 'Epic', platform: 'Epic Games', installPath: manifest.InstallLocation, executablePath: executablePath && fs.existsSync(executablePath) ? executablePath : findGameExecutable(manifest.InstallLocation, manifest.DisplayName), epicAppName: manifest.AppName || null });
+      games.push({
+        id: `epic-${manifest.InstallationGuid || manifest.AppName}`,
+        name: manifest.DisplayName,
+        category: 'Epic',
+        platform: 'Epic Games',
+        installPath: manifest.InstallLocation,
+        executablePath: executablePath && fs.existsSync(executablePath) ? executablePath : findGameExecutable(manifest.InstallLocation, manifest.DisplayName),
+        epicAppName: manifest.AppName || null,
+        epicCatalogNamespace: manifest.CatalogNamespace || null,
+        epicCatalogItemId: manifest.CatalogItemId || null
+      });
     } catch { /* Ignore invalid or partial Epic manifests */ }
   }
   return games;
+}
+
+function findEpicLaunchMetadata(game) {
+  if (game.epicCatalogNamespace && game.epicCatalogItemId && game.epicAppName) return game;
+  if (!game.installPath) return game;
+  const manifestsDir = path.join(process.env.ProgramData || 'C:\\ProgramData', 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests');
+  let files = [];
+  try { files = fs.readdirSync(manifestsDir).filter((entry) => entry.endsWith('.item')); } catch { return game; }
+  const installPath = path.resolve(game.installPath).toLowerCase();
+  for (const file of files) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(path.join(manifestsDir, file), 'utf8'));
+      if (manifest.InstallLocation && path.resolve(manifest.InstallLocation).toLowerCase() === installPath) {
+        return {
+          ...game,
+          epicCatalogNamespace: manifest.CatalogNamespace || null,
+          epicCatalogItemId: manifest.CatalogItemId || null,
+          epicAppName: manifest.AppName || game.epicAppName || null
+        };
+      }
+    } catch { /* Ignore unreadable manifests. */ }
+  }
+  return game;
 }
 
 function scanGog() {
@@ -536,9 +569,20 @@ app.whenReady().then(() => {
         await shell.openExternal(`steam://run/${game.steamAppId}`);
         return { ok: true };
       }
-      if (game.platform === 'Epic Games' && /^[\w.-]+$/.test(String(game.epicAppName || ''))) {
-        await shell.openExternal(`com.epicgames.launcher://apps/${encodeURIComponent(game.epicAppName)}?action=launch&silent=true`);
-        return { ok: true };
+      if (game.platform === 'Epic Games') {
+        game = findEpicLaunchMetadata(game);
+        let epicTarget = '';
+        if (game.epicCatalogNamespace && game.epicCatalogItemId && game.epicAppName) {
+          epicTarget = [game.epicCatalogNamespace, game.epicCatalogItemId, game.epicAppName].map((part) => encodeURIComponent(String(part))).join('%3A');
+        } else if (game.installPath && path.isAbsolute(game.installPath)) {
+          epicTarget = encodeURIComponent(path.resolve(game.installPath));
+        } else if (game.epicAppName) {
+          epicTarget = encodeURIComponent(String(game.epicAppName));
+        }
+        if (epicTarget) {
+          await shell.openExternal(`com.epicgames.launcher://apps/${epicTarget}?action=launch&silent=true`);
+          return { ok: true };
+        }
       }
       const root = typeof game.installPath === 'string' ? path.resolve(game.installPath) : '';
       let executablePath = typeof game.executablePath === 'string' ? path.resolve(game.executablePath) : '';

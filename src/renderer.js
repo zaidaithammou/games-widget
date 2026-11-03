@@ -51,8 +51,8 @@ async function fetchExecutableIcons() {
 function loadSettings() {
     const savedStyle = localStorage.getItem('coverArtStyle');
     if (savedStyle) {
-        coverArtStyle = savedStyle;
-        coverArtSelect.value = savedStyle;
+        coverArtStyle = savedStyle === 'disks' ? 'disks' : 'icons';
+        coverArtSelect.value = coverArtStyle;
     }
 
     const savedSort = localStorage.getItem('sortBy');
@@ -303,7 +303,9 @@ function createGameCard(game) {
     const removeButton = document.createElement('button');
     removeButton.className = 'game-remove-btn';
     removeButton.type = 'button';
-    removeButton.textContent = '×';
+    const removeGlyph = document.createElement('span');
+    removeGlyph.textContent = '×';
+    removeButton.appendChild(removeGlyph);
     removeButton.title = `Remove ${game.name}`;
     removeButton.setAttribute('aria-label', `Remove ${game.name} from library`);
     removeButton.addEventListener('click', (event) => {
@@ -311,7 +313,7 @@ function createGameCard(game) {
         removeGame(game);
     });
 
-    const imageSource = coverArtStyle === 'wallpaper'
+    const imageSource = coverArtStyle === 'icons'
         ? (game.landscapeImage || game.coverImage)
         : coverArtStyle === 'disks'
             ? (game.appIconImage || game.iconImage || game.coverImage)
@@ -330,7 +332,7 @@ function createGameCard(game) {
                 return;
             }
             img.dataset.backupAttempted = 'true';
-            if (coverArtStyle !== 'wallpaper' && game.coverImage && game.coverImage !== imageSource) {
+            if (coverArtStyle === 'disks' && game.coverImage && game.coverImage !== imageSource) {
                 game.iconImage = game.coverImage;
                 saveGames();
                 renderGames();
@@ -729,6 +731,8 @@ async function addSelectedGames() {
         if (existingGame) {
             if (foundGame.executablePath) existingGame.executablePath = foundGame.executablePath;
             if (foundGame.epicAppName) existingGame.epicAppName = foundGame.epicAppName;
+            if (foundGame.epicCatalogNamespace) existingGame.epicCatalogNamespace = foundGame.epicCatalogNamespace;
+            if (foundGame.epicCatalogItemId) existingGame.epicCatalogItemId = foundGame.epicCatalogItemId;
             try {
                 const result = await window.gamesWidget.getExecutableIcon(existingGame.executablePath, existingGame.installPath, existingGame.name);
                 if (result?.image) {
@@ -755,6 +759,8 @@ async function addSelectedGames() {
             installPath: foundGame.installPath,
             executablePath: foundGame.executablePath || null,
             epicAppName: foundGame.epicAppName || null,
+            epicCatalogNamespace: foundGame.epicCatalogNamespace || null,
+            epicCatalogItemId: foundGame.epicCatalogItemId || null,
             group: null
         };
         if (newGame.executablePath || newGame.installPath) {

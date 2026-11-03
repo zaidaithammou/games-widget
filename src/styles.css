@@ -235,8 +235,8 @@ select option {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 0 2px;
-    line-height: 1;
+    padding: 0;
+    line-height: 32px;
     opacity: 0.82;
     transition: opacity 0.15s ease, background 0.15s ease;
 }
@@ -245,6 +245,8 @@ select option {
 .game-remove-btn:focus-visible { opacity: 1; }
 
 .game-remove-btn:hover { background: #d64050; }
+
+.game-remove-btn span { transform: translateY(-1px); }
 
 .game-actions {
     display: flex;
@@ -304,19 +306,6 @@ select option {
     object-fit: cover;
 }
 
-/* Icons Style */
-.game-cover.style-icons {
-    border-radius: 8px;
-    padding: 8px;
-    background: rgba(10, 13, 22, 0.4);
-}
-
-.game-cover.style-icons img {
-    object-fit: contain;
-    object-position: center center;
-    border-radius: 4px;
-}
-
 /* Disks Style */
 .game-cover.style-disks {
     border-radius: 50%;
@@ -355,16 +344,20 @@ select option {
     box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.28), 0 8px 18px rgba(0, 0, 0, 0.35);
 }
 
-/* Wallpaper Style */
-.game-cover.style-wallpaper {
+/* Icons Style */
+.game-cover.style-icons {
     aspect-ratio: 16/9;
     border-radius: 8px;
-    background: rgba(8, 12, 20, 0.55);
+    border: 1px solid rgba(215, 224, 242, 0.28);
+    background: #0b101a;
 }
 
-.game-cover.style-wallpaper img {
+.game-cover.style-icons img {
     object-fit: contain;
-    background: rgba(0, 0, 0, 0.18);
+    object-position: center center;
+    border: 1px solid rgba(215, 224, 242, 0.22);
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.26);
 }
 
 .game-info {
