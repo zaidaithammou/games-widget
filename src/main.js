@@ -56,8 +56,8 @@ function setCompactMode(nextCompact) {
     saveWindowBounds();
     expandedBounds = mainWindow.getBounds();
     compact = true;
-    mainWindow.setMinimumSize(240, 76);
-    mainWindow.setSize(360, 100, true);
+    mainWindow.setMinimumSize(56, 56);
+    mainWindow.setSize(56, 56, true);
   } else {
     compact = false;
     mainWindow.setMinimumSize(320, 360);

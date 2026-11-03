@@ -9,7 +9,7 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **Installed Game Scanning**: Read installed game records from Steam, Epic Games, and GOG
 - **Automatic Cover Art**: Fetch matching Steam artwork when adding installed games and fill missing covers in the existing library
 - **Drag & Drop Relocation**: Drag the header to move the widget; its position and size are saved
-- **Compact Mode**: The minimize button keeps a small movable title bar on screen; use the plus button to expand it
+- **Compact Mode**: The minimize button leaves a small movable app icon on screen; click it to expand the widget
 - **Resize Functionality**: Customize the widget size when open
 - **Multiple Cover Art Styles**: Choose between icons, disks, or wallpaper styles
 - **Sorting Options**: Sort games by name, category, or user-created groups

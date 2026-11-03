@@ -24,6 +24,21 @@ body {
     overflow: hidden;
 }
 
+.compact-icon {
+    display: none;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+}
+
+.compact-icon:active { cursor: grabbing; }
+.compact-icon img { display: block; width: 48px; height: 48px; pointer-events: none; }
+
 /* Window Controls */
 .window-controls {
     display: flex;
@@ -560,26 +575,23 @@ select option {
     color: rgba(255, 255, 255, 0.3);
 }
 
-/* Minimize keeps the widget visible as a small movable title bar. */
-body.compact .widget-container { min-height: 100px; }
-body.compact .window-controls {
-    position: absolute;
-    top: 3px;
-    right: 7px;
-    z-index: 2;
-    padding: 4px;
+/* Minimize leaves a movable app-sized icon on the desktop. */
+body.compact .widget-container {
+    width: 56px;
+    height: 56px;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
     background: transparent;
-}
-body.compact .widget-header {
-    flex: 1;
-    min-height: 100%;
-    padding: 12px 92px 12px 16px;
     border: 0;
-    background: rgba(22, 33, 62, 0.76);
+    border-radius: 12px;
+    box-shadow: none;
 }
-body.compact .widget-header h1 { font-size: 17px; }
-body.compact .header-controls,
-body.compact .search-filter-bar,
-body.compact .games-grid,
+body.compact .compact-icon { display: block; }
+body.compact .window-controls,
+body.compact .widget-header,
 body.compact .settings-panel,
 body.compact .scanner-panel { display: none !important; }
+body.compact .header-controls,
+body.compact .search-filter-bar,
+body.compact .games-grid { display: none !important; }
