@@ -3,6 +3,7 @@ let games = [];
 let coverArtStyle = 'icons';
 let sortBy = 'name';
 let userGroups = [];
+let expandedGameGroups = new Set();
 
 // DOM Elements
 const gamesGrid = document.getElementById('gamesGrid');
@@ -102,6 +103,11 @@ function loadSettings() {
     if (savedGroups) {
         userGroups = JSON.parse(savedGroups);
     }
+
+    try {
+        const expanded = JSON.parse(localStorage.getItem('expandedGameGroups') || '[]');
+        expandedGameGroups = new Set(Array.isArray(expanded) ? expanded : []);
+    } catch { expandedGameGroups = new Set(); }
 }
 
 // Load Games
@@ -208,7 +214,9 @@ function setupEventListeners() {
         handle.addEventListener('pointerup', finishDrag);
         handle.addEventListener('pointercancel', finishDrag);
     }
-    makeDraggable(document.querySelector('.widget-header'), (event) => !event.target.closest('button, input, select'));
+    const canDragTopBar = (event) => !event.target.closest('button, input, select, a');
+    makeDraggable(document.querySelector('.window-controls'), canDragTopBar);
+    makeDraggable(document.querySelector('.widget-header'), canDragTopBar);
     makeDraggable(compactRestoreBtn, () => true);
     compactRestoreBtn.addEventListener('click', (event) => {
         if (suppressCompactClick) {
@@ -293,7 +301,8 @@ function renderGames() {
     const searchTerm = searchInput.value.toLowerCase();
     let filteredGames = games.filter(game => 
         game.name.toLowerCase().includes(searchTerm) ||
-        game.category.toLowerCase().includes(searchTerm)
+        String(game.category || '').toLowerCase().includes(searchTerm) ||
+        getGameGroupName(game).toLowerCase().includes(searchTerm)
     );
 
     // Sort games
@@ -303,10 +312,6 @@ function renderGames() {
                 return a.name.localeCompare(b.name);
             case 'category':
                 return a.category.localeCompare(b.category);
-            case 'group':
-                const groupA = a.group || '';
-                const groupB = b.group || '';
-                return groupA.localeCompare(groupB);
             default:
                 return 0;
         }
@@ -325,10 +330,85 @@ function renderGames() {
         return;
     }
 
+    if (sortBy === 'group') {
+        renderGameFolders(filteredGames);
+        return;
+    }
+
     filteredGames.forEach(game => {
         const gameCard = createGameCard(game);
         gamesGrid.appendChild(gameCard);
     });
+}
+
+function getGameGroupName(game) {
+    if (game.group && userGroups.includes(game.group)) return game.group;
+    const platform = String(game.platform || game.category || '').trim().toLowerCase();
+    if (platform.includes('steam')) return 'Steam';
+    if (platform.includes('epic')) return 'Epic Games';
+    if (platform.includes('gog')) return 'GOG';
+    return 'Unassigned';
+}
+
+function compareGameGroups(a, b) {
+    const standard = ['Steam', 'Epic Games', 'GOG'];
+    const indexA = standard.indexOf(a);
+    const indexB = standard.indexOf(b);
+    if (indexA !== -1 || indexB !== -1) return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+    if (a === 'Unassigned') return 1;
+    if (b === 'Unassigned') return -1;
+    const customA = userGroups.indexOf(a);
+    const customB = userGroups.indexOf(b);
+    if (customA !== -1 || customB !== -1) return (customA === -1 ? 99 : customA) - (customB === -1 ? 99 : customB);
+    return a.localeCompare(b);
+}
+
+function renderGameFolders(filteredGames) {
+    const grouped = new Map();
+    for (const game of filteredGames) {
+        const name = getGameGroupName(game);
+        if (!grouped.has(name)) grouped.set(name, []);
+        grouped.get(name).push(game);
+    }
+
+    for (const [groupName, groupGames] of [...grouped.entries()].sort(([a], [b]) => compareGameGroups(a, b))) {
+        const folder = document.createElement('section');
+        folder.className = `game-folder${expandedGameGroups.has(groupName) ? ' is-open' : ''}`;
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'game-folder-header';
+        header.setAttribute('aria-expanded', String(expandedGameGroups.has(groupName)));
+        const icon = document.createElement('span');
+        icon.className = 'game-folder-icon';
+        icon.textContent = expandedGameGroups.has(groupName) ? '📂' : '📁';
+        const name = document.createElement('span');
+        name.className = 'game-folder-name';
+        name.textContent = groupName;
+        const count = document.createElement('span');
+        count.className = 'game-folder-count';
+        count.textContent = String(groupGames.length);
+        const chevron = document.createElement('span');
+        chevron.className = 'game-folder-chevron';
+        chevron.textContent = '⌄';
+        header.append(icon, name, count, chevron);
+
+        const panel = document.createElement('div');
+        panel.className = 'game-folder-panel';
+        const content = document.createElement('div');
+        content.className = 'game-folder-content';
+        for (const game of groupGames) content.appendChild(createGameCard(game));
+        panel.appendChild(content);
+        header.addEventListener('click', () => {
+            const isOpen = folder.classList.toggle('is-open');
+            header.setAttribute('aria-expanded', String(isOpen));
+            icon.textContent = isOpen ? '📂' : '📁';
+            if (isOpen) expandedGameGroups.add(groupName);
+            else expandedGameGroups.delete(groupName);
+            localStorage.setItem('expandedGameGroups', JSON.stringify([...expandedGameGroups]));
+        });
+        folder.append(header, panel);
+        gamesGrid.appendChild(folder);
+    }
 }
 
 // Create Game Card
@@ -509,6 +589,7 @@ function showGameContextMenu(event, game) {
     const options = [
         { text: 'Launch', action: () => launchGame(game) },
         { text: 'Edit', action: () => editGame(game) },
+        { text: 'Move to Group…', action: () => showGameGroupMenu(event.pageX, event.pageY, game) },
         { text: 'Remove', action: () => removeGame(game) }
     ];
 
@@ -529,8 +610,8 @@ function showGameContextMenu(event, game) {
         });
 
         item.addEventListener('click', () => {
-            option.action();
             document.body.removeChild(menu);
+            option.action();
         });
 
         menu.appendChild(item);
@@ -544,6 +625,44 @@ function showGameContextMenu(event, game) {
             if (!menu.contains(e.target)) {
                 document.body.removeChild(menu);
                 document.removeEventListener('click', closeMenu);
+            }
+        });
+    }, 0);
+}
+
+function showGameGroupMenu(x, y, game) {
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.position = 'absolute';
+    menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - 210))}px`;
+    menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - 220))}px`;
+    menu.style.zIndex = '1001';
+    menu.setAttribute('role', 'menu');
+    const options = [
+        { text: `Use launcher group (${getGameGroupName({ ...game, group: null })})`, group: null },
+        ...userGroups.map((group) => ({ text: group, group }))
+    ];
+    for (const option of options) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'context-menu-item';
+        item.textContent = option.text;
+        item.addEventListener('click', () => {
+            game.group = option.group;
+            saveGames();
+            renderGames();
+            menu.remove();
+        });
+        menu.appendChild(item);
+    }
+    document.body.appendChild(menu);
+    const menuHeight = menu.getBoundingClientRect().height;
+    menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - menuHeight - 8))}px`;
+    setTimeout(() => {
+        document.addEventListener('click', function closeGroupMenu(e) {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeGroupMenu);
             }
         });
     }, 0);
@@ -613,8 +732,14 @@ function renderUserGroups() {
         deleteBtn.className = 'delete-group-btn';
         deleteBtn.textContent = 'Delete';
         deleteBtn.addEventListener('click', () => {
-            userGroups.splice(index, 1);
+            const [removedGroup] = userGroups.splice(index, 1);
+            games.forEach((game) => { if (game.group === removedGroup) game.group = null; });
+            expandedGameGroups.delete(removedGroup);
+            localStorage.setItem('userGroups', JSON.stringify(userGroups));
+            localStorage.setItem('expandedGameGroups', JSON.stringify([...expandedGameGroups]));
+            saveGames();
             renderUserGroups();
+            renderGames();
         });
 
         groupItem.appendChild(groupName);
@@ -626,9 +751,13 @@ function renderUserGroups() {
 // Add New Group
 function addNewGroup() {
     const groupName = prompt('Enter group name:');
-    if (groupName && groupName.trim() && !userGroups.includes(groupName.trim())) {
-        userGroups.push(groupName.trim());
+    const name = groupName?.trim();
+    const reserved = ['Steam', 'Epic Games', 'GOG', 'Unassigned'];
+    if (name && !userGroups.includes(name) && !reserved.some((item) => item.toLowerCase() === name.toLowerCase())) {
+        userGroups.push(name);
+        localStorage.setItem('userGroups', JSON.stringify(userGroups));
         renderUserGroups();
+        renderGames();
     }
 }
 

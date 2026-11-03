@@ -95,14 +95,6 @@ body {
     user-select: none;
 }
 
-.drag-handle {
-    color: rgba(255, 255, 255, 0.52);
-    font-size: 22px;
-    line-height: 1;
-    cursor: grab;
-    user-select: none;
-}
-
 .header-controls {
     display: flex;
     gap: 8px;
@@ -303,6 +295,97 @@ select option {
     border-color: rgba(102, 126, 234, 0.5);
     box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
 }
+
+.game-folder {
+    grid-column: 1 / -1;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(8, 13, 24, 0.32);
+}
+
+.game-folder-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.055);
+    color: #fff;
+    text-align: left;
+    cursor: pointer;
+}
+
+.game-folder-header:hover { background: rgba(102, 126, 234, 0.18); }
+.game-folder-icon { margin-right: 10px; font-size: 18px; }
+.game-folder-name { flex: 1; font-size: 14px; font-weight: 650; }
+.game-folder-count {
+    min-width: 25px;
+    margin-right: 10px;
+    padding: 3px 7px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 11px;
+    text-align: center;
+}
+.game-folder-chevron { transition: transform 220ms ease; }
+.game-folder.is-open .game-folder-chevron { transform: rotate(180deg); }
+
+.game-folder-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 260ms ease;
+}
+
+.game-folder.is-open .game-folder-panel { grid-template-rows: 1fr; }
+
+.game-folder-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    align-content: start;
+    gap: 16px;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 4px;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 220ms ease, transform 220ms ease, padding 220ms ease;
+}
+
+.game-folder.is-open .game-folder-content {
+    padding: 14px 4px 4px;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.context-menu {
+    min-width: 180px;
+    padding: 6px 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(22, 28, 42, 0.98);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.42);
+}
+
+.context-menu-item {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font: 13px 'Segoe UI', sans-serif;
+    text-align: left;
+    white-space: nowrap;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.context-menu-item:hover,
+.context-menu-item:focus-visible { background: rgba(102, 126, 234, 0.3); outline: none; }
 
 .game-card.selected {
     border-color: #667eea;

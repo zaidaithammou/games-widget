@@ -11,6 +11,8 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **Cover Art Styles**: Choose Disks or Icons, with Icons showing fitted game artwork
 - **AI Artwork Upscaling**: Locally upscale the saved game artwork with Swin2SR to improve small or compressed images
 - **Compact Game Cards**: Keep each row sized to the game cards, even when a row has only one or two games
+- **Window Size and Placement Limits**: Keep the full widget on a display, with an expanded size range of 520 × 460 through 960 × 540 pixels
+- **Launcher and Custom Group Folders**: Sort into animated folders by launcher or assign games to user-created groups
 - **Quick Removal**: Remove games from the library with the button on each game card or its right-click menu
 - **Saved Library**: Keep the game list in the app's local data file and restore it whenever the widget opens
 - **Game Launching**: Start a game with the Play button on its card
