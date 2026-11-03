@@ -69,17 +69,26 @@ function loadGames() {
 }
 
 async function fetchMissingArtwork() {
-    const withoutArtwork = games.filter((game) => !game.coverImage || !game.iconImage);
+    const withoutArtwork = games.filter((game) => !game.artworkChecked || !game.iconImage);
     if (!withoutArtwork.length) return;
     let changed = false;
     await Promise.all(withoutArtwork.map(async (game) => {
         try {
             const artwork = await window.gamesWidget.findArtwork(game.name, game.steamAppId);
             if (artwork?.image) {
-                game.coverImage = game.coverImage || artwork.image;
-                game.iconImage = game.iconImage || artwork.iconImage || artwork.image;
+                if (artwork.landscapeImage) {
+                    game.coverImage = artwork.landscapeImage;
+                    game.landscapeImage = artwork.landscapeImage;
+                } else {
+                    game.coverImage = game.coverImage || artwork.image;
+                }
+                game.iconImage = artwork.iconImage || artwork.image || game.iconImage;
                 game.steamAppId = game.steamAppId || artwork.appid;
                 game.artworkSource = artwork.source || game.artworkSource;
+                changed = true;
+            }
+            if (!game.artworkChecked) {
+                game.artworkChecked = true;
                 changed = true;
             }
         } catch (error) {
@@ -262,7 +271,9 @@ function createGameCard(game) {
     const cover = document.createElement('div');
     cover.className = `game-cover style-${coverArtStyle}`;
 
-    const imageSource = coverArtStyle === 'small-icons' ? (game.iconImage || game.coverImage) : game.coverImage;
+    const imageSource = coverArtStyle === 'wallpaper'
+        ? (game.landscapeImage || game.coverImage)
+        : (game.iconImage || game.coverImage);
     if (imageSource) {
         const img = document.createElement('img');
         img.src = imageSource;
@@ -277,7 +288,7 @@ function createGameCard(game) {
                 return;
             }
             img.dataset.backupAttempted = 'true';
-            if (coverArtStyle === 'small-icons' && game.coverImage && game.coverImage !== imageSource) {
+            if (coverArtStyle !== 'wallpaper' && game.coverImage && game.coverImage !== imageSource) {
                 game.iconImage = game.coverImage;
                 saveGames();
                 renderGames();
@@ -287,6 +298,7 @@ function createGameCard(game) {
                 const backup = await window.gamesWidget.findBackupArtwork(game.name);
                 if (backup?.image) {
                     game.coverImage = backup.image;
+                    if (backup.landscapeImage) game.landscapeImage = backup.landscapeImage;
                     game.iconImage = backup.iconImage || backup.image;
                     game.artworkSource = backup.source || game.artworkSource;
                     saveGames();
@@ -666,7 +678,9 @@ async function addSelectedGames() {
             platform: foundGame.platform,
             steamAppId: artwork?.appid || foundGame.steamAppId,
             coverImage: artwork?.image || null,
+            landscapeImage: artwork?.landscapeImage || null,
             iconImage: artwork?.iconImage || artwork?.image || null,
+            artworkChecked: true,
             artworkSource: artwork?.source || null,
             installPath: foundGame.installPath,
             group: null
