@@ -20,7 +20,10 @@
 
             <!-- Widget Header -->
             <div class="widget-header">
-                <h1>Game Library</h1>
+                <div class="widget-brand">
+                    <img class="widget-brand-icon" src="../assets/icon.png" alt="">
+                    <h1>My Game Library</h1>
+                </div>
                 <div class="header-controls">
                     <button class="header-btn" id="scanGamesBtn">🎮 Scan Games</button>
                     <button class="header-btn" id="settingsBtn">⚙️</button>
@@ -78,7 +81,16 @@
                     </div>
                     <div class="settings-section">
                         <h3>User Groups</h3>
-                        <button class="btn btn-primary" id="addGroupBtn">+ Add Group</button>
+                        <button class="btn btn-primary" id="addGroupBtn" type="button">+ Add Group</button>
+                        <form class="add-group-form" id="addGroupForm" hidden>
+                            <label for="newGroupName">New group name</label>
+                            <input id="newGroupName" name="newGroupName" type="text" maxlength="40" autocomplete="off" placeholder="e.g. Co-op games">
+                            <div class="add-group-actions">
+                                <button class="btn btn-primary" id="createGroupBtn" type="submit">Create Group</button>
+                                <button class="btn btn-secondary" id="cancelGroupBtn" type="button">Cancel</button>
+                            </div>
+                            <p class="group-form-status" id="groupFormStatus" role="status" aria-live="polite"></p>
+                        </form>
                         <div id="userGroupsList"></div>
                     </div>
                     <div class="settings-actions">
