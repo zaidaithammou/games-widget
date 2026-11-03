@@ -8,14 +8,14 @@ A Windows desktop overlay for displaying and managing your game library. It runs
 - **System Tray Controls**: Show, hide, open settings, or quit from the tray menu; `Ctrl+Alt+G` toggles visibility
 - **Installed Game Scanning**: Read installed game records from Steam, Epic Games, and GOG
 - **Automatic Cover Art**: Try Steam, then Epic Games Store and EGDATA artwork; fill missing covers in the existing library
-- **Executable Icons**: Use each installed game's own Windows executable icon for the Icons and Disks views when available
+- **Cover Art Styles**: Choose Disks or Icons, with Icons showing fitted game artwork
 - **Quick Removal**: Remove games from the library with the button on each game card or its right-click menu
 - **Saved Library**: Keep the game list in the app's local data file and restore it whenever the widget opens
 - **Game Launching**: Start a game with the Play button on its card
 - **Drag & Drop Relocation**: Drag the header to move the widget; its position and size are saved
 - **Compact Mode**: The minimize button leaves a small movable app icon on screen; click it to expand the widget
 - **Resize Functionality**: Customize the widget size when open
-- **Multiple Cover Art Styles**: Choose centered game icons, discs, or full-fit wallpapers
+- **Multiple Cover Art Styles**: Choose full-fit Icons or Disks
 - **Sorting Options**: Sort games by name, category, or user-created groups
 - **User Groups**: Create custom groups to organize your games
 - **Modern UI**: Beautiful gradient design with smooth animations
@@ -79,7 +79,7 @@ When adding a detected game, the widget tries an exact Steam Store title match, 
 ### Customizing Appearance
 
 1. Click the "⚙️ Settings" button
-2. Choose your preferred cover art style (Icons, Disks, or Wallpaper)
+2. Choose your preferred cover art style (Disks or Icons)
 3. Create custom groups to organize your games
 4. Click "Save" to apply changes
 
