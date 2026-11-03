@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Games Widget</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div class="widget-container">
+            <button class="compact-icon" id="compactRestoreBtn" aria-label="Expand Games Widget" title="Expand Games Widget">
+                <img src="../assets/icon.png" alt="">
+            </button>
+            <!-- Window Controls -->
+            <div class="window-controls">
+                <button class="control-btn minimize-btn" id="minimizeBtn">−</button>
+                <button class="control-btn close-btn" id="closeBtn">×</button>
+            </div>
+
+            <!-- Widget Header -->
+            <div class="widget-header">
+                <h1>Game Library</h1>
+                <div class="header-controls">
+                    <button class="header-btn" id="scanGamesBtn">🎮 Scan Games</button>
+                    <button class="header-btn" id="settingsBtn">⚙️</button>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="search-filter-bar">
+                <input type="text" id="searchInput" placeholder="Search games...">
+                <select id="sortSelect">
+                    <option value="name">Sort by Name</option>
+                    <option value="category">Sort by Category</option>
+                    <option value="group">Sort by Group</option>
+                </select>
+                <select id="coverArtSelect">
+                    <option value="disks">Disks</option>
+                    <option value="icons">Icons</option>
+                </select>
+            </div>
+
+            <!-- Games Grid -->
+            <div class="games-grid" id="gamesGrid">
+                <!-- Games will be dynamically inserted here -->
+            </div>
+
+            <!-- Settings Panel (Hidden by default) -->
+            <div class="settings-panel" id="settingsPanel" style="display: none;">
+                <div class="settings-content">
+                    <h2>Settings</h2>
+                    <div class="settings-section">
+                        <h3>Cover Art Style</h3>
+                        <div class="setting-option">
+                            <input type="radio" id="styleDisks" name="coverStyle" value="disks">
+                            <label for="styleDisks">Disks</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="radio" id="styleIcons" name="coverStyle" value="icons" checked>
+                            <label for="styleIcons">Icons</label>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Artwork Quality</h3>
+                        <p class="setting-help">AI upscales game artwork locally on this PC. The model downloads the first time you use it.</p>
+                        <button class="btn btn-primary" id="enhanceArtworkBtn" type="button">✨ Improve Artwork with AI</button>
+                        <p class="enhance-artwork-status" id="enhanceArtworkStatus" role="status" aria-live="polite"></p>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Game Library Platforms</h3>
+                        <div class="setting-option">
+                            <input type="checkbox" id="steamEnabled" checked>
+                            <label for="steamEnabled">Steam</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="epicEnabled" checked>
+                            <label for="epicEnabled">Epic Games</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="gogEnabled">
+                            <label for="gogEnabled">GOG</label>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>User Groups</h3>
+                        <button class="btn btn-primary" id="addGroupBtn">+ Add Group</button>
+                        <div id="userGroupsList"></div>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn btn-secondary" id="closeSettingsBtn">Close</button>
+                        <button class="btn btn-primary" id="saveSettingsBtn">Save</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Scanner Panel (Hidden by default) -->
+            <div class="scanner-panel" id="scannerPanel" style="display: none;">
+                <div class="scanner-content">
+                    <h2>Scan for Games</h2>
+                    <div class="scanner-options">
+                        <h3>Select Platforms</h3>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanSteam" checked>
+                            <label for="scanSteam">Steam</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanEpic" checked>
+                            <label for="scanEpic">Epic Games</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanGog">
+                            <label for="scanGog">GOG</label>
+                        </div>
+                    </div>
+                    <div class="scanner-actions">
+                        <button class="btn btn-secondary" id="cancelScanBtn">Cancel</button>
+                        <button class="btn btn-primary" id="startScanBtn">Start Scan</button>
+                    </div>
+                    <div class="scan-progress" id="scanProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="scanStatus">Scanning...</p>
+                    </div>
+                    <div class="scan-results" id="scanResults" style="display: none;">
+                        <h3>Found Games</h3>
+                        <p id="scanSummary" class="scan-summary"></p>
+                        <div id="foundGamesList"></div>
+                        <div class="scan-results-actions">
+                            <button class="btn btn-secondary" id="selectAllBtn">Select All</button>
+                            <button class="btn btn-primary" id="addSelectedBtn">Add Selected</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

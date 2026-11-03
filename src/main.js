@@ -6,6 +6,12 @@ const { spawn } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 
+const MIN_WINDOW_WIDTH = 520;
+const MIN_WINDOW_HEIGHT = 460;
+const MAX_WINDOW_WIDTH = 960;
+const MAX_WINDOW_HEIGHT = 540;
+const COMPACT_WINDOW_SIZE = 56;
+
 let mainWindow;
 let tray;
 let isQuitting = false;
@@ -14,6 +20,7 @@ let expandedBounds;
 let dragTimer;
 let saveBoundsTimer;
 let dragOrigin;
+let appliedWindowLimits = '';
 const artworkLookupCache = new Map();
 const settingsPath = () => path.join(app.getPath('userData'), 'widget-settings.json');
 const libraryPath = () => path.join(app.getPath('userData'), 'games-library.json');
@@ -44,16 +51,57 @@ function queueSaveWindowBounds() {
 function getInitialBounds() {
   const saved = readSettings().bounds;
   const fallback = { width: 400, height: 600, x: 100, y: 100 };
-  if (!saved || !Number.isFinite(saved.x) || !Number.isFinite(saved.y)) return fallback;
-  const display = screen.getDisplayMatching(saved);
+  const bounds = saved && Number.isFinite(saved.x) && Number.isFinite(saved.y) ? saved : fallback;
+  return constrainBounds(bounds, screen.getDisplayMatching(bounds));
+}
+
+function constrainBounds(bounds, display = screen.getDisplayMatching(bounds), compactMode = compact) {
   const area = display.workArea;
-  const width = Math.max(320, Math.min(Number(saved.width) || fallback.width, area.width));
-  const height = Math.max(360, Math.min(Number(saved.height) || fallback.height, area.height));
+  if (compactMode) {
+    return {
+      x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - COMPACT_WINDOW_SIZE)),
+      y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - COMPACT_WINDOW_SIZE)),
+      width: Math.min(COMPACT_WINDOW_SIZE, area.width),
+      height: Math.min(COMPACT_WINDOW_SIZE, area.height)
+    };
+  }
+  const maxWidth = Math.max(1, Math.min(MAX_WINDOW_WIDTH, area.width));
+  const maxHeight = Math.max(1, Math.min(MAX_WINDOW_HEIGHT, area.height));
+  const minWidth = Math.min(MIN_WINDOW_WIDTH, maxWidth);
+  const minHeight = Math.min(MIN_WINDOW_HEIGHT, maxHeight);
+  const width = Math.max(minWidth, Math.min(Number(bounds.width) || 400, maxWidth));
+  const height = Math.max(minHeight, Math.min(Number(bounds.height) || 500, maxHeight));
   return {
-    width, height,
-    x: Math.max(area.x, Math.min(saved.x, area.x + area.width - Math.min(width, 320))),
-    y: Math.max(area.y, Math.min(saved.y, area.y + area.height - Math.min(height, 360)))
+    x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - width)),
+    y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - height)),
+    width,
+    height
   };
+}
+
+function updateWindowLimits(display) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const area = display.workArea;
+  const minWidth = compact ? Math.min(COMPACT_WINDOW_SIZE, area.width) : Math.min(MIN_WINDOW_WIDTH, area.width);
+  const minHeight = compact ? Math.min(COMPACT_WINDOW_SIZE, area.height) : Math.min(MIN_WINDOW_HEIGHT, area.height);
+  const maxWidth = compact ? minWidth : Math.max(1, Math.min(MAX_WINDOW_WIDTH, area.width));
+  const maxHeight = compact ? minHeight : Math.max(1, Math.min(MAX_WINDOW_HEIGHT, area.height));
+  const signature = `${minWidth}:${minHeight}:${maxWidth}:${maxHeight}`;
+  if (signature === appliedWindowLimits) return;
+  appliedWindowLimits = signature;
+  mainWindow.setMinimumSize(minWidth, minHeight);
+  mainWindow.setMaximumSize(maxWidth, maxHeight);
+}
+
+function enforceWindowBounds() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const bounds = mainWindow.getBounds();
+  const display = screen.getDisplayMatching(bounds);
+  updateWindowLimits(display);
+  const constrained = constrainBounds(bounds, display);
+  if (bounds.x !== constrained.x || bounds.y !== constrained.y || bounds.width !== constrained.width || bounds.height !== constrained.height) {
+    mainWindow.setBounds(constrained, false);
+  }
 }
 
 function setCompactMode(nextCompact) {
@@ -62,13 +110,17 @@ function setCompactMode(nextCompact) {
     saveWindowBounds();
     expandedBounds = mainWindow.getBounds();
     compact = true;
-    mainWindow.setMinimumSize(56, 56);
-    mainWindow.setSize(56, 56, true);
+    appliedWindowLimits = '';
+    const display = screen.getDisplayMatching(expandedBounds);
+    updateWindowLimits(display);
+    mainWindow.setBounds(constrainBounds({ ...expandedBounds, width: COMPACT_WINDOW_SIZE, height: COMPACT_WINDOW_SIZE }, display, true), false);
   } else {
     compact = false;
-    mainWindow.setMinimumSize(320, 360);
-    const bounds = expandedBounds || readSettings().bounds || { width: 400, height: 600 };
-    mainWindow.setSize(Math.max(320, bounds.width), Math.max(360, bounds.height), true);
+    appliedWindowLimits = '';
+    const bounds = expandedBounds || readSettings().bounds || { width: 520, height: 500, x: 100, y: 100 };
+    const display = screen.getDisplayMatching(bounds);
+    updateWindowLimits(display);
+    mainWindow.setBounds(constrainBounds(bounds, display, false), false);
   }
   mainWindow.webContents.send('widget:compact-state', compact);
 }
@@ -81,11 +133,14 @@ function beginDrag() {
   dragTimer = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed() || !dragOrigin) return;
     const cursorNow = screen.getCursorScreenPoint();
-    mainWindow.setPosition(
-      dragOrigin.x + cursorNow.x - dragOrigin.cursorX,
-      dragOrigin.y + cursorNow.y - dragOrigin.cursorY,
-      false
-    );
+    const display = screen.getDisplayNearestPoint(cursorNow);
+    const current = mainWindow.getBounds();
+    updateWindowLimits(display);
+    mainWindow.setBounds(constrainBounds({
+      ...current,
+      x: dragOrigin.x + cursorNow.x - dragOrigin.cursorX,
+      y: dragOrigin.y + cursorNow.y - dragOrigin.cursorY
+    }, display), false);
   }, 16);
 }
 
@@ -488,10 +543,13 @@ function lookupBackupArtwork(query) {
 
 function createWindow() {
   expandedBounds = getInitialBounds();
+  appliedWindowLimits = '';
   mainWindow = new BrowserWindow({
     ...expandedBounds,
-    minWidth: 320,
-    minHeight: 360,
+    minWidth: Math.min(MIN_WINDOW_WIDTH, screen.getDisplayMatching(expandedBounds).workArea.width),
+    minHeight: Math.min(MIN_WINDOW_HEIGHT, screen.getDisplayMatching(expandedBounds).workArea.height),
+    maxWidth: Math.min(MAX_WINDOW_WIDTH, screen.getDisplayMatching(expandedBounds).workArea.width),
+    maxHeight: Math.min(MAX_WINDOW_HEIGHT, screen.getDisplayMatching(expandedBounds).workArea.height),
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -509,8 +567,8 @@ function createWindow() {
   });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.on('move', queueSaveWindowBounds);
-  mainWindow.on('resize', queueSaveWindowBounds);
+  mainWindow.on('move', () => { enforceWindowBounds(); queueSaveWindowBounds(); });
+  mainWindow.on('resize', () => { enforceWindowBounds(); queueSaveWindowBounds(); });
   mainWindow.on('close', (event) => {
     if (!isQuitting) { event.preventDefault(); mainWindow.hide(); }
   });
