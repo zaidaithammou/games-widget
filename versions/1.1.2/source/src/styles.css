@@ -1,0 +1,835 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: transparent;
+    color: #ffffff;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
+}
+
+.widget-container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.74) 0%, rgba(22, 33, 62, 0.72) 50%, rgba(15, 52, 96, 0.70) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 38px rgba(0, 0, 0, 0.24);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.compact-icon {
+    display: none;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+}
+
+.compact-icon:active { cursor: grabbing; }
+.compact-icon img { display: block; width: 48px; height: 48px; pointer-events: none; }
+
+/* Window Controls */
+.window-controls {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    -webkit-app-region: no-drag;
+}
+
+.control-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+.close-btn:hover {
+    background: #ff4757;
+}
+
+/* Widget Header */
+.widget-header {
+    padding: 16px 20px;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    -webkit-app-region: no-drag;
+    cursor: grab;
+    touch-action: none;
+}
+
+.widget-header:active { cursor: grabbing; }
+
+.widget-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+.widget-brand-icon {
+    display: block;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex: 0 0 28px;
+}
+
+.widget-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    user-select: none;
+}
+
+.header-controls {
+    display: flex;
+    gap: 8px;
+    -webkit-app-region: no-drag;
+}
+
+.header-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.header-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Search and Filter Bar */
+.search-filter-bar {
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.06);
+    -webkit-app-region: no-drag;
+}
+
+#searchInput {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+#searchInput::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+#searchInput:focus {
+    border-color: #667eea;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+select {
+    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+select:hover {
+    border-color: #667eea;
+}
+
+select option {
+    background: #1a1a2e;
+    color: white;
+}
+
+/* Games Grid */
+.games-grid {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-auto-rows: max-content;
+    align-content: start;
+    align-items: start;
+    gap: 16px;
+    -webkit-app-region: no-drag;
+}
+
+.games-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.games-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.games-grid::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 4px;
+}
+
+.games-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.7);
+}
+
+/* Game Card */
+.game-card {
+    position: relative;
+    align-self: start;
+    height: fit-content;
+    background: rgba(255, 255, 255, 0.035);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.game-remove-btn {
+    position: static;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    background: rgba(17, 22, 34, 0.82);
+    color: #fff;
+    font-size: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    opacity: 0.82;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.game-remove-btn:hover,
+.game-remove-btn:focus-visible { opacity: 1; }
+
+.game-remove-btn:hover { background: #d64050; }
+
+.game-remove-btn span {
+    position: relative;
+    display: block;
+    width: 14px;
+    height: 14px;
+}
+
+.game-remove-btn span::before,
+.game-remove-btn span::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 14px;
+    height: 1.5px;
+    border-radius: 2px;
+    background: #fff;
+}
+
+.game-remove-btn span::before { transform: translate(-50%, -50%) rotate(45deg); }
+.game-remove-btn span::after { transform: translate(-50%, -50%) rotate(-45deg); }
+
+.game-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.game-play-btn {
+    min-width: 88px;
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    font: 600 12px 'Segoe UI', sans-serif;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.game-play-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+
+.game-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(102, 126, 234, 0.5);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+}
+
+.game-folder {
+    grid-column: 1 / -1;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(8, 13, 24, 0.32);
+}
+
+.game-folder-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.055);
+    color: #fff;
+    text-align: left;
+    cursor: pointer;
+}
+
+.game-folder-header:hover { background: rgba(102, 126, 234, 0.18); }
+.game-folder-icon { margin-right: 10px; font-size: 18px; }
+.game-folder-name { flex: 1; font-size: 14px; font-weight: 650; }
+.game-folder-count {
+    min-width: 25px;
+    margin-right: 10px;
+    padding: 3px 7px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 11px;
+    text-align: center;
+}
+.game-folder-chevron { transition: transform 220ms ease; }
+.game-folder.is-open .game-folder-chevron { transform: rotate(180deg); }
+
+.game-folder-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 260ms ease;
+}
+
+.game-folder.is-open .game-folder-panel { grid-template-rows: 1fr; }
+
+.game-folder-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    align-content: start;
+    gap: 16px;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 4px;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 220ms ease, transform 220ms ease, padding 220ms ease;
+}
+
+.game-folder.is-open .game-folder-content {
+    padding: 14px 4px 4px;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.context-menu {
+    min-width: 180px;
+    padding: 6px 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(22, 28, 42, 0.98);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.42);
+}
+
+.context-menu-item {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font: 13px 'Segoe UI', sans-serif;
+    text-align: left;
+    white-space: nowrap;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.context-menu-item:hover,
+.context-menu-item:focus-visible { background: rgba(102, 126, 234, 0.3); outline: none; }
+
+.game-card.selected {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.2);
+}
+
+/* Cover Art Styles */
+.game-cover {
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.game-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Disks Style */
+.game-cover.style-disks {
+    border-radius: 50%;
+    border: 4px solid rgba(196, 207, 224, 0.34);
+    padding: 0;
+    background: radial-gradient(circle, #aeb9c9 0 3%, #343d4d 3.5% 7%, #151b27 7.5% 8%, #8995a7 8.5% 9%, #353e4e 9.5% 60%, #bac4d3 61% 63%, #202735 64% 100%);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.22), 0 5px 14px rgba(0, 0, 0, 0.28);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.game-cover.style-disks::before {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 17%;
+    height: 17%;
+    border: 2px solid rgba(216, 225, 238, 0.74);
+    background: radial-gradient(circle, #111723 0 28%, #788598 34% 52%, #293242 58% 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(13, 18, 28, 0.65), 0 1px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.game-cover.style-disks img {
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center center;
+    transform: none;
+}
+
+.game-card:hover .game-cover.style-disks {
+    border-color: rgba(170, 185, 211, 0.62);
+    box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.28), 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Icons Style */
+.game-cover.style-icons {
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    border: 1px solid rgba(215, 224, 242, 0.28);
+    background: #0b101a;
+}
+
+.game-cover.style-icons img {
+    object-fit: contain;
+    object-position: center center;
+    border: 2px solid #080b12;
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.26);
+}
+
+.game-cover.style-icons::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    z-index: 2;
+    border: 1px solid rgba(215, 224, 242, 0.2);
+    border-radius: 7px;
+    pointer-events: none;
+}
+
+.game-info {
+    width: 100%;
+}
+
+.game-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.game-category {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 4px;
+}
+
+.game-group {
+    font-size: 10px;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+/* Settings Panel */
+.settings-panel,
+.scanner-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 20, 35, 0.84);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    -webkit-app-region: no-drag;
+}
+
+.settings-content,
+.scanner-content {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.settings-content h2,
+.scanner-content h2 {
+    font-size: 24px;
+    margin-bottom: 24px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.settings-section,
+.scanner-options {
+    margin-bottom: 24px;
+}
+
+.settings-section h3,
+.scanner-options h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.setting-option {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.setting-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.setting-option input[type="checkbox"],
+.setting-option input[type="radio"] {
+    margin-right: 12px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.setting-option label {
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.settings-actions,
+.scanner-actions,
+.scan-results-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Scan Progress */
+.scan-progress {
+    margin-top: 20px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+#scanStatus {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+/* Scan Results */
+.scan-results {
+    margin-top: 20px;
+}
+
+.scan-results h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.scan-summary,
+.scan-empty {
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+#foundGamesList {
+    max-height: 300px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.found-game-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.found-game-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.found-game-item.selected {
+    background: rgba(102, 126, 234, 0.2);
+    border: 1px solid #667eea;
+}
+
+.found-game-item input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.found-game-info {
+    flex: 1;
+}
+
+.found-game-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.found-game-platform {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* User Groups */
+#userGroupsList {
+    margin-top: 12px;
+}
+
+.add-group-form {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.add-group-form[hidden] { display: none; }
+.add-group-form label { display: block; margin-bottom: 7px; font-size: 12px; color: rgba(255,255,255,.7); }
+.add-group-form input {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 7px;
+    background: rgba(255,255,255,.1);
+    color: white;
+    font: inherit;
+}
+.add-group-form input:focus { outline: 2px solid rgba(102,126,234,.7); outline-offset: 1px; }
+.add-group-actions { display: flex; gap: 8px; margin-top: 9px; }
+.add-group-actions .btn { padding: 7px 12px; }
+.group-form-status { min-height: 0; margin-top: 0; color: #ffb4b4; font-size: 12px; }
+.group-form-status:not(:empty) { margin-top: 8px; }
+
+.user-group-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.user-group-name {
+    font-size: 14px;
+}
+
+.delete-group-btn {
+    background: rgba(255, 71, 87, 0.2);
+    color: #ff4757;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.delete-group-btn:hover {
+    background: rgba(255, 71, 87, 0.3);
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    padding: 40px;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.empty-state-text {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.empty-state-subtext {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Minimize leaves a movable app-sized icon on the desktop. */
+body.compact .widget-container {
+    width: 56px;
+    height: 56px;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    border-radius: 12px;
+    box-shadow: none;
+}
+body.compact .compact-icon { display: block; }
+body.compact .window-controls,
+body.compact .widget-header,
+body.compact .settings-panel,
+body.compact .scanner-panel { display: none !important; }
+body.compact .header-controls,
+body.compact .search-filter-bar,
+body.compact .games-grid { display: none !important; }

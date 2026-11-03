@@ -252,7 +252,9 @@ function setupEventListeners() {
     document.getElementById('addSelectedBtn').addEventListener('click', addSelectedGames);
 
     // User Groups
-    document.getElementById('addGroupBtn').addEventListener('click', addNewGroup);
+    document.getElementById('addGroupBtn').addEventListener('click', showAddGroupForm);
+    document.getElementById('addGroupForm').addEventListener('submit', createUserGroup);
+    document.getElementById('cancelGroupBtn').addEventListener('click', hideAddGroupForm);
 
     // IPC Listeners
     window.gamesWidget.onOpenSettings(() => {
@@ -712,17 +714,46 @@ function renderUserGroups() {
     });
 }
 
-// Add New Group
-function addNewGroup() {
-    const groupName = prompt('Enter group name:');
-    const name = groupName?.trim();
+function showAddGroupForm() {
+    const form = document.getElementById('addGroupForm');
+    form.hidden = false;
+    document.getElementById('groupFormStatus').textContent = '';
+    document.getElementById('newGroupName').focus();
+}
+
+function hideAddGroupForm() {
+    document.getElementById('addGroupForm').hidden = true;
+    document.getElementById('newGroupName').value = '';
+    document.getElementById('groupFormStatus').textContent = '';
+}
+
+function createUserGroup(event) {
+    event.preventDefault();
+    const input = document.getElementById('newGroupName');
+    const status = document.getElementById('groupFormStatus');
+    const name = input.value.trim();
     const reserved = ['Steam', 'Epic Games', 'GOG', 'Unassigned'];
-    if (name && !userGroups.includes(name) && !reserved.some((item) => item.toLowerCase() === name.toLowerCase())) {
-        userGroups.push(name);
-        saveUserGroups();
-        renderUserGroups();
-        renderGames();
+    if (!name) {
+        status.textContent = 'Enter a name for this group.';
+        input.focus();
+        return;
     }
+    if (userGroups.some((group) => group.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+        status.textContent = 'A group with that name already exists.';
+        input.focus();
+        return;
+    }
+    if (reserved.some((item) => item.toLowerCase() === name.toLowerCase())) {
+        status.textContent = 'That name is reserved for a launcher group.';
+        input.focus();
+        return;
+    }
+
+    userGroups.push(name);
+    saveUserGroups();
+    renderUserGroups();
+    renderGames();
+    hideAddGroupForm();
 }
 
 // Game Scanning

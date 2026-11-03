@@ -85,6 +85,21 @@ body {
 
 .widget-header:active { cursor: grabbing; }
 
+.widget-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+.widget-brand-icon {
+    display: block;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex: 0 0 28px;
+}
+
 .widget-header h1 {
     font-size: 20px;
     font-weight: 600;
@@ -717,6 +732,31 @@ select option {
 #userGroupsList {
     margin-top: 12px;
 }
+
+.add-group-form {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.add-group-form[hidden] { display: none; }
+.add-group-form label { display: block; margin-bottom: 7px; font-size: 12px; color: rgba(255,255,255,.7); }
+.add-group-form input {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 7px;
+    background: rgba(255,255,255,.1);
+    color: white;
+    font: inherit;
+}
+.add-group-form input:focus { outline: 2px solid rgba(102,126,234,.7); outline-offset: 1px; }
+.add-group-actions { display: flex; gap: 8px; margin-top: 9px; }
+.add-group-actions .btn { padding: 7px 12px; }
+.group-form-status { min-height: 0; margin-top: 0; color: #ffb4b4; font-size: 12px; }
+.group-form-status:not(:empty) { margin-top: 8px; }
 
 .user-group-item {
     display: flex;
