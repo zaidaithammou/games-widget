@@ -514,11 +514,15 @@ app.whenReady().then(() => {
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
   ipcMain.handle('games:artwork', (_event, query, appId) => lookupArtwork(query, appId));
-  ipcMain.handle('games:executable-icon', async (_event, executablePath) => {
-    if (process.platform !== 'win32' || typeof executablePath !== 'string' || path.extname(executablePath).toLowerCase() !== '.exe' || !path.isAbsolute(executablePath) || !fs.existsSync(executablePath)) return null;
+  ipcMain.handle('games:executable-icon', async (_event, executablePath, installPath, gameName) => {
+    if (process.platform !== 'win32') return null;
+    if (typeof executablePath !== 'string' || path.extname(executablePath).toLowerCase() !== '.exe' || !path.isAbsolute(executablePath) || !fs.existsSync(executablePath)) {
+      executablePath = typeof installPath === 'string' && path.isAbsolute(installPath) ? findGameExecutable(installPath, gameName) : null;
+    }
+    if (!executablePath || !fs.existsSync(executablePath)) return null;
     try {
       const icon = await app.getFileIcon(executablePath, { size: 'normal' });
-      return icon.isEmpty() ? null : icon.resize({ width: 128, height: 128 }).toDataURL();
+      return icon.isEmpty() ? null : { executablePath, image: icon.resize({ width: 128, height: 128 }).toDataURL() };
     } catch { return null; }
   });
   ipcMain.handle('games:backup-artwork', (_event, query) => lookupBackupArtwork(query));
