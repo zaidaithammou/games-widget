@@ -154,3 +154,13 @@ The [`versions/`](versions/README.md) directory contains the packaged app source
 
 ## License
 This project is open-source and available under the [MIT License](LICENSE).
+
+---
+<div align="center">
+  <p><b>Zaid Ait Hammou</b> (Zaid_Ath)</p>
+  <p>Full-Stack Web Development Student @ NTIC Rabat | Ex-Bell & Nespresso Specialist</p>
+  <p>
+    <a href="https://zaidath-portfolio.netlify.app/">🌐 Portfolio</a> • 
+    <a href="https://github.com/zaidaithammou">📦 GitHub</a>
+  </p>
+</div>
