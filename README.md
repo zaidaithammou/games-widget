@@ -153,5 +153,4 @@ The [`versions/`](versions/README.md) directory contains the packaged app source
 - Artwork providers and launcher installation records can change independently of the widget code. Keep provider failures graceful so the library remains usable when a lookup source is unavailable.
 
 ## License
-
-Coming Soon
+This project is open-source and available under the [MIT License](LICENSE).
