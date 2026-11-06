@@ -21,5 +21,6 @@ contextBridge.exposeInMainWorld('gamesWidget', {
   onCompactState: (callback) => ipcRenderer.on('widget:compact-state', (_event, compact) => callback(compact)),
   onWindowMode: (callback) => ipcRenderer.on('widget:mode', (_event, mode) => callback(mode)),
   onPerformanceSample: (callback) => ipcRenderer.on('widget:performance-sample', (_event, sample) => callback(sample)),
-  onOpenSettings: (callback) => ipcRenderer.on('open-settings', callback)
+  onOpenSettings: (callback) => ipcRenderer.on('open-settings', callback),
+  openExternal: (url) => ipcRenderer.send('shell:open-external', url)
 });

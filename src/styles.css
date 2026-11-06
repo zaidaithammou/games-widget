@@ -993,6 +993,26 @@ body.performance .performance-panel:active { cursor: grabbing; }
     white-space: nowrap;
     text-overflow: ellipsis;
 }
+.perf-downloads {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 9.5px;
+    color: rgba(255, 255, 255, 0.5);
+}
+.perf-downloads[hidden] { display: none; }
+.perf-link {
+    padding: 1px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #9aa8ff;
+    font-size: 9.5px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.perf-link:hover { background: rgba(102, 126, 234, 0.3); }
 
 .perf-controls {
     position: absolute;
