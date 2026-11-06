@@ -123,6 +123,34 @@ function enforceWindowBounds() {
   }
 }
 
+function ensureRtssRunning() {
+  if (process.platform !== 'win32') return;
+  const rtssPaths = [
+    path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'RivaTuner Statistics Server', 'RTSS.exe'),
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'RivaTuner Statistics Server', 'RTSS.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'RivaTuner Statistics Server', 'RTSS.exe')
+  ];
+  
+  // Check if RTSS is already running
+  try {
+    const result = execFileSync('tasklist', ['/fi', 'imagename eq RTSS.exe', '/fo', 'csv', '/nh'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+    if (result.includes('RTSS.exe')) return; // Already running
+  } catch { /* tasklist failed, continue to check paths */ }
+  
+  // Try to start RTSS if found
+  for (const rtssPath of rtssPaths) {
+    if (fs.existsSync(rtssPath)) {
+      try {
+        spawn(rtssPath, [], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+        console.log('Started RTSS for FPS monitoring');
+        return;
+      } catch (error) {
+        console.warn('Could not start RTSS:', error.message);
+      }
+    }
+  }
+}
+
 function setWindowMode(nextMode) {
   if (!mainWindow || mainWindow.isDestroyed() || windowMode === nextMode) return;
   if (windowMode === 'normal') {
@@ -137,9 +165,13 @@ function setWindowMode(nextMode) {
   const display = screen.getDisplayMatching(bounds);
   updateWindowLimits(display);
   mainWindow.setBounds(constrainBounds(bounds, display), false);
-  mainWindow.setAlwaysOnTop(true, nextMode === 'performance' ? 'screen-saver' : 'floating');
-  if (nextMode === 'performance' && mainWindow.isVisible()) performanceMonitor.start();
-  else performanceMonitor.stop();
+  // Use highest always-on-top level to stay above fullscreen apps
+  mainWindow.setAlwaysOnTop(true, 'screen-saver');
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (nextMode === 'performance' && mainWindow.isVisible()) {
+    ensureRtssRunning();
+    performanceMonitor.start();
+  } else performanceMonitor.stop();
   mainWindow.webContents.send('widget:compact-state', nextMode === 'compact');
   mainWindow.webContents.send('widget:mode', nextMode);
 }
@@ -803,6 +835,7 @@ function createWindow() {
     movable: true,
     skipTaskbar: true,
     show: false,
+    focusable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -812,8 +845,32 @@ function createWindow() {
   });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   mainWindow.on('move', () => { enforceWindowBounds(); queueSaveWindowBounds(); });
   mainWindow.on('resize', () => { enforceWindowBounds(); queueSaveWindowBounds(); });
+  mainWindow.on('blur', () => {
+    // Keep the widget on top even when it loses focus to fullscreen apps
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+          mainWindow.setAlwaysOnTop(true, 'screen-saver');
+          mainWindow.moveTop();
+        }
+      }, 100);
+    }
+  });
+  mainWindow.on('focus', () => {
+    // Ensure the widget stays on top when it regains focus
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setAlwaysOnTop(true, 'screen-saver');
+      mainWindow.moveTop();
+    }
+  });
+  mainWindow.on('minimize', (event) => {
+    // Prevent the widget from being minimized
+    event.preventDefault();
+    mainWindow.restore();
+  });
   mainWindow.on('close', (event) => {
     if (!isQuitting) { event.preventDefault(); mainWindow.hide(); }
   });
@@ -851,7 +908,7 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
-  ipcMain.on('widget:minimize', () => setWindowMode(windowMode === 'normal' ? 'compact' : 'normal'));
+  ipcMain.on('widget:minimize', () => setWindowMode(windowMode === 'compact' ? 'normal' : 'compact'));
   ipcMain.on('widget:performance', () => setWindowMode(windowMode === 'performance' ? 'normal' : 'performance'));
   ipcMain.on('widget:close', () => mainWindow?.hide());
   ipcMain.on('widget:drag-start', beginDrag);

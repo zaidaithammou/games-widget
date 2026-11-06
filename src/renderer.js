@@ -178,6 +178,7 @@ function setupEventListeners() {
     closeBtn.addEventListener('click', () => window.gamesWidget.close());
     performanceBtn.addEventListener('click', () => window.gamesWidget.togglePerformanceMode());
     document.getElementById('performanceExitBtn').addEventListener('click', () => window.gamesWidget.togglePerformanceMode());
+    document.getElementById('performanceMinBtn').addEventListener('click', () => window.gamesWidget.minimize());
     window.gamesWidget.onWindowMode((mode) => {
         const performance = mode === 'performance';
         if (performance && !document.body.classList.contains('performance')) resetPerformancePanel();
@@ -1187,11 +1188,13 @@ function updatePerformancePanel(sample = {}) {
     const notes = [];
     const sources = Array.isArray(sample.sources) ? sample.sources : [];
     if (sources.length) notes.push(`via ${sources.join(', ')}`);
-    if (!hasFps && sample.ramTotalGb) notes.push('FPS: run RivaTuner (RTSS)');
+    if (!hasFps && sample.ramTotalGb) {
+      notes.push('FPS: install RivaTuner Statistics Server (RTSS) for accurate frame rate');
+    }
     if (!Number.isFinite(sample.cpuTemp) && !Number.isFinite(sample.gpuTemp) && sample.ramTotalGb) notes.push('Temps: run MSI Afterburner');
     const source = document.getElementById('perfSource');
     source.textContent = notes.join(' · ');
-    source.title = 'FPS comes from RivaTuner Statistics Server. Temperatures come from MSI Afterburner or LibreHardwareMonitor when they are running.';
+    source.title = 'FPS comes from RivaTuner Statistics Server (RTSS) which is included with MSI Afterburner. Install RTSS and enable "Show On-Screen Display" for FPS data. Temperatures come from MSI Afterburner or LibreHardwareMonitor when they are running.';
 }
 
 // Initialize the app
