@@ -23,14 +23,12 @@ const compactRestoreBtn = document.getElementById('compactRestoreBtn');
 const performanceBtn = document.getElementById('performanceBtn');
 const performancePanel = document.getElementById('performancePanel');
 const LAUNCHER_GROUPS = ['Steam', 'Epic Games', 'GOG', 'Xbox', 'Battle.net', 'Ubisoft Connect', 'EA App', 'Manual'];
-const RECENT_GROUP = 'Recently Played';
 const LAUNCH_FIELDS = ['epicAppName', 'epicCatalogNamespace', 'epicCatalogItemId', 'xboxPackageFamilyName', 'xboxAppId', 'ubisoftId', 'battleNetProductCode'];
 
 // Initialize
 async function init() {
     await loadSettings();
     await loadGames();
-    await syncSteamLastPlayed();
     setupEventListeners();
     renderGames();
     fetchMissingArtwork();
@@ -117,21 +115,7 @@ async function loadGames() {
     saveGames();
 }
 
-async function syncSteamLastPlayed() {
-    let times = {};
-    try { times = await window.gamesWidget.getSteamLastPlayed() || {}; } catch (error) {
-        console.warn('Could not read Steam play history:', error);
-    }
-    let changed = false;
-    for (const game of games) {
-        const steamTime = Number(times[game.steamAppId] || 0);
-        if (game.platform === 'Steam' && steamTime > (game.lastPlayed || 0)) {
-            game.lastPlayed = steamTime;
-            changed = true;
-        }
-    }
-    if (changed) saveGames();
-}
+async function syncSteamLastPlayed() {}
 
 async function fetchMissingArtwork() {
     const withoutArtwork = games.filter((game) => !game.artworkChecked || !game.iconImage);
@@ -312,8 +296,6 @@ function renderGames() {
         String(game.category || '').toLowerCase().includes(searchTerm) ||
         getGameGroupName(game).toLowerCase().includes(searchTerm)
     );
-    if (sortBy === 'recent') filteredGames = filteredGames.filter((game) => game.lastPlayed > 0);
-
     // Sort games
     filteredGames.sort((a, b) => {
         switch (sortBy) {
@@ -321,8 +303,6 @@ function renderGames() {
                 return a.name.localeCompare(b.name);
             case 'category':
                 return a.category.localeCompare(b.category);
-            case 'recent':
-                return (b.lastPlayed || 0) - (a.lastPlayed || 0);
             default:
                 return 0;
         }
@@ -331,22 +311,14 @@ function renderGames() {
     gamesGrid.innerHTML = '';
 
     if (filteredGames.length === 0) {
-        const recent = sortBy === 'recent';
         gamesGrid.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state-icon">${recent ? '🕒' : '🎮'}</div>
-                <div class="empty-state-text">${recent ? 'No recently played games' : 'No games found'}</div>
-                <div class="empty-state-subtext">${recent ? 'Games you launch from the widget will appear here' : 'Click "Scan Games" to add games to your library'}</div>
+                <div class="empty-state-icon">🎮</div>
+                <div class="empty-state-text">No games found</div>
+                <div class="empty-state-subtext">Click "Scan Games" to add games to your library</div>
             </div>
         `;
         return;
-    }
-
-    if (sortBy === 'recent') {
-        const title = document.createElement('div');
-        title.className = 'games-section-title';
-        title.textContent = `${RECENT_GROUP} · ${filteredGames.length}`;
-        gamesGrid.appendChild(title);
     }
 
     if (sortBy === 'group') {
@@ -375,7 +347,7 @@ function getGameGroupName(game) {
 }
 
 function compareGameGroups(a, b) {
-    const standard = [RECENT_GROUP, ...LAUNCHER_GROUPS];
+    const standard = [...LAUNCHER_GROUPS];
     const indexA = standard.indexOf(a);
     const indexB = standard.indexOf(b);
     if (indexA !== -1 || indexB !== -1) return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
@@ -394,11 +366,6 @@ function renderGameFolders(filteredGames) {
         if (!grouped.has(name)) grouped.set(name, []);
         grouped.get(name).push(game);
     }
-    const recentGames = filteredGames.filter((game) => game.lastPlayed > 0)
-        .sort((a, b) => b.lastPlayed - a.lastPlayed)
-        .slice(0, 8);
-    if (recentGames.length) grouped.set(RECENT_GROUP, recentGames);
-
     for (const [groupName, groupGames] of [...grouped.entries()].sort(([a], [b]) => compareGameGroups(a, b))) {
         const folder = document.createElement('section');
         folder.className = `game-folder${expandedGameGroups.has(groupName) ? ' is-open' : ''}`;
@@ -531,14 +498,6 @@ function createGameCard(game) {
     info.appendChild(title);
     info.appendChild(category);
 
-    if (sortBy === 'recent' && game.lastPlayed) {
-        const lastPlayed = document.createElement('div');
-        lastPlayed.className = 'game-last-played';
-        lastPlayed.textContent = formatLastPlayed(game.lastPlayed);
-        lastPlayed.title = new Date(game.lastPlayed).toLocaleString();
-        info.appendChild(lastPlayed);
-    }
-
     if (game.group) {
         const group = document.createElement('div');
         group.className = 'game-group';
@@ -598,17 +557,6 @@ function getGameEmoji(category) {
     return emojis[category] || '🎮';
 }
 
-function formatLastPlayed(timestamp) {
-    const minutes = Math.floor((Date.now() - timestamp) / 60000);
-    if (minutes < 1) return 'Played just now';
-    if (minutes < 60) return `Played ${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `Played ${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `Played ${days}d ago`;
-    return `Played ${new Date(timestamp).toLocaleDateString()}`;
-}
-
 async function launchGame(game) {
     const displayName = getDisplayName(game);
     try {
@@ -617,9 +565,6 @@ async function launchGame(game) {
             alert(result?.error || `Could not start ${displayName}.`);
             return;
         }
-        game.lastPlayed = Date.now();
-        saveGames();
-        if (sortBy === 'recent' || sortBy === 'group') renderGames();
     } catch (error) {
         alert(`Could not start ${displayName}: ${error.message}`);
     }
@@ -883,7 +828,7 @@ function createUserGroup(event) {
     const input = document.getElementById('newGroupName');
     const status = document.getElementById('groupFormStatus');
     const name = input.value.trim();
-    const reserved = [...LAUNCHER_GROUPS, RECENT_GROUP, 'Unassigned'];
+    const reserved = [...LAUNCHER_GROUPS, 'Unassigned'];
     if (!name) {
         status.textContent = 'Enter a name for this group.';
         input.focus();
@@ -1077,7 +1022,6 @@ async function addSelectedGames() {
         if (existingGame) {
             if (foundGame.executablePath) existingGame.executablePath = foundGame.executablePath;
             for (const field of LAUNCH_FIELDS) if (foundGame[field]) existingGame[field] = foundGame[field];
-            if (foundGame.lastPlayed > (existingGame.lastPlayed || 0)) existingGame.lastPlayed = foundGame.lastPlayed;
             try {
                 const result = await window.gamesWidget.getExecutableIcon(existingGame.executablePath, existingGame.installPath, existingGame.name);
                 if (result?.image) {
@@ -1104,7 +1048,6 @@ async function addSelectedGames() {
             installPath: foundGame.installPath,
             executablePath: foundGame.executablePath || null,
             ...Object.fromEntries(LAUNCH_FIELDS.map((field) => [field, foundGame[field] || null])),
-            lastPlayed: foundGame.lastPlayed || null,
             group: null
         };
         if (newGame.executablePath || newGame.installPath) {
@@ -1168,6 +1111,7 @@ function updatePerformancePanel(sample = {}) {
     const hasFps = Number.isFinite(sample.fps);
     document.getElementById('perfFps').textContent = formatMetric(sample.fps);
     document.getElementById('perfFrameTime').textContent = `${formatMetric(sample.frameTime ?? (hasFps && sample.fps > 0 ? 1000 / sample.fps : null), 1)} ms`;
+    document.getElementById('perfFpsHint').style.display = hasFps ? 'none' : 'block';
     setPerformanceMetric('perfCpuTemp', sample.cpuTemp, sample.cpuTemp, metricTone(sample.cpuTemp, 70, 85));
     setPerformanceMetric('perfCpuLoad', sample.cpuLoad, sample.cpuLoad, metricTone(sample.cpuLoad, 101, 101));
     setPerformanceMetric('perfGpuTemp', sample.gpuTemp, sample.gpuTemp, metricTone(sample.gpuTemp, 70, 85));
@@ -1201,6 +1145,7 @@ function updatePerformancePanel(sample = {}) {
     source.textContent = notes.join(' · ');
     source.title = 'FPS comes from RivaTuner Statistics Server (RTSS). Temperatures come from MSI Afterburner or LibreHardwareMonitor when they are running.';
     document.getElementById('perfDownloads').hidden = !(missingFps || missingTemps);
+    window.gamesWidget.setPerformanceHeight(missingFps || missingTemps ? 'with-links' : 'clean');
     document.querySelectorAll('.perf-link').forEach((link) => {
         link.onclick = () => window.gamesWidget.openExternal(link.dataset.url);
     });
