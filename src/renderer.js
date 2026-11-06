@@ -20,11 +20,17 @@ const scannerPanel = document.getElementById('scannerPanel');
 const minimizeBtn = document.getElementById('minimizeBtn');
 const closeBtn = document.getElementById('closeBtn');
 const compactRestoreBtn = document.getElementById('compactRestoreBtn');
+const performanceBtn = document.getElementById('performanceBtn');
+const performancePanel = document.getElementById('performancePanel');
+const LAUNCHER_GROUPS = ['Steam', 'Epic Games', 'GOG', 'Xbox', 'Battle.net', 'Ubisoft Connect', 'EA App', 'Manual'];
+const RECENT_GROUP = 'Recently Played';
+const LAUNCH_FIELDS = ['epicAppName', 'epicCatalogNamespace', 'epicCatalogItemId', 'xboxPackageFamilyName', 'xboxAppId', 'ubisoftId', 'battleNetProductCode'];
 
 // Initialize
 async function init() {
     await loadSettings();
     await loadGames();
+    await syncSteamLastPlayed();
     setupEventListeners();
     renderGames();
     fetchMissingArtwork();
@@ -111,6 +117,22 @@ async function loadGames() {
     saveGames();
 }
 
+async function syncSteamLastPlayed() {
+    let times = {};
+    try { times = await window.gamesWidget.getSteamLastPlayed() || {}; } catch (error) {
+        console.warn('Could not read Steam play history:', error);
+    }
+    let changed = false;
+    for (const game of games) {
+        const steamTime = Number(times[game.steamAppId] || 0);
+        if (game.platform === 'Steam' && steamTime > (game.lastPlayed || 0)) {
+            game.lastPlayed = steamTime;
+            changed = true;
+        }
+    }
+    if (changed) saveGames();
+}
+
 async function fetchMissingArtwork() {
     const withoutArtwork = games.filter((game) => !game.artworkChecked || !game.iconImage);
     if (!withoutArtwork.length) return;
@@ -154,6 +176,14 @@ function saveGames() {
 function setupEventListeners() {
     minimizeBtn.addEventListener('click', () => window.gamesWidget.minimize());
     closeBtn.addEventListener('click', () => window.gamesWidget.close());
+    performanceBtn.addEventListener('click', () => window.gamesWidget.togglePerformanceMode());
+    document.getElementById('performanceExitBtn').addEventListener('click', () => window.gamesWidget.togglePerformanceMode());
+    window.gamesWidget.onWindowMode((mode) => {
+        const performance = mode === 'performance';
+        if (performance && !document.body.classList.contains('performance')) resetPerformancePanel();
+        document.body.classList.toggle('performance', performance);
+    });
+    window.gamesWidget.onPerformanceSample(updatePerformancePanel);
 
     let suppressCompactClick = false;
     function makeDraggable(handle, canStart) {
@@ -189,6 +219,7 @@ function setupEventListeners() {
     makeDraggable(document.querySelector('.window-controls'), canDragTopBar);
     makeDraggable(document.querySelector('.widget-header'), canDragTopBar);
     makeDraggable(compactRestoreBtn, () => true);
+    makeDraggable(performancePanel, canDragTopBar);
     compactRestoreBtn.addEventListener('click', (event) => {
         if (suppressCompactClick) {
             event.preventDefault();
@@ -250,6 +281,7 @@ function setupEventListeners() {
     });
 
     document.getElementById('startScanBtn').addEventListener('click', startGameScan);
+    document.getElementById('addManualGameBtn').addEventListener('click', addManualGames);
 
     document.getElementById('selectAllBtn').addEventListener('click', selectAllFoundGames);
     document.getElementById('addSelectedBtn').addEventListener('click', addSelectedGames);
@@ -279,6 +311,7 @@ function renderGames() {
         String(game.category || '').toLowerCase().includes(searchTerm) ||
         getGameGroupName(game).toLowerCase().includes(searchTerm)
     );
+    if (sortBy === 'recent') filteredGames = filteredGames.filter((game) => game.lastPlayed > 0);
 
     // Sort games
     filteredGames.sort((a, b) => {
@@ -287,6 +320,8 @@ function renderGames() {
                 return a.name.localeCompare(b.name);
             case 'category':
                 return a.category.localeCompare(b.category);
+            case 'recent':
+                return (b.lastPlayed || 0) - (a.lastPlayed || 0);
             default:
                 return 0;
         }
@@ -295,14 +330,22 @@ function renderGames() {
     gamesGrid.innerHTML = '';
 
     if (filteredGames.length === 0) {
+        const recent = sortBy === 'recent';
         gamesGrid.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state-icon">🎮</div>
-                <div class="empty-state-text">No games found</div>
-                <div class="empty-state-subtext">Click "Scan Games" to add games to your library</div>
+                <div class="empty-state-icon">${recent ? '🕒' : '🎮'}</div>
+                <div class="empty-state-text">${recent ? 'No recently played games' : 'No games found'}</div>
+                <div class="empty-state-subtext">${recent ? 'Games you launch from the widget will appear here' : 'Click "Scan Games" to add games to your library'}</div>
             </div>
         `;
         return;
+    }
+
+    if (sortBy === 'recent') {
+        const title = document.createElement('div');
+        title.className = 'games-section-title';
+        title.textContent = `${RECENT_GROUP} · ${filteredGames.length}`;
+        gamesGrid.appendChild(title);
     }
 
     if (sortBy === 'group') {
@@ -322,11 +365,16 @@ function getGameGroupName(game) {
     if (platform.includes('steam')) return 'Steam';
     if (platform.includes('epic')) return 'Epic Games';
     if (platform.includes('gog')) return 'GOG';
+    if (platform.includes('xbox')) return 'Xbox';
+    if (platform.includes('battle')) return 'Battle.net';
+    if (platform.includes('ubisoft')) return 'Ubisoft Connect';
+    if (platform === 'ea app' || platform === 'ea') return 'EA App';
+    if (platform.includes('manual')) return 'Manual';
     return 'Unassigned';
 }
 
 function compareGameGroups(a, b) {
-    const standard = ['Steam', 'Epic Games', 'GOG'];
+    const standard = [RECENT_GROUP, ...LAUNCHER_GROUPS];
     const indexA = standard.indexOf(a);
     const indexB = standard.indexOf(b);
     if (indexA !== -1 || indexB !== -1) return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
@@ -345,6 +393,10 @@ function renderGameFolders(filteredGames) {
         if (!grouped.has(name)) grouped.set(name, []);
         grouped.get(name).push(game);
     }
+    const recentGames = filteredGames.filter((game) => game.lastPlayed > 0)
+        .sort((a, b) => b.lastPlayed - a.lastPlayed)
+        .slice(0, 8);
+    if (recentGames.length) grouped.set(RECENT_GROUP, recentGames);
 
     for (const [groupName, groupGames] of [...grouped.entries()].sort(([a], [b]) => compareGameGroups(a, b))) {
         const folder = document.createElement('section');
@@ -478,6 +530,14 @@ function createGameCard(game) {
     info.appendChild(title);
     info.appendChild(category);
 
+    if (sortBy === 'recent' && game.lastPlayed) {
+        const lastPlayed = document.createElement('div');
+        lastPlayed.className = 'game-last-played';
+        lastPlayed.textContent = formatLastPlayed(game.lastPlayed);
+        lastPlayed.title = new Date(game.lastPlayed).toLocaleString();
+        info.appendChild(lastPlayed);
+    }
+
     if (game.group) {
         const group = document.createElement('div');
         group.className = 'game-group';
@@ -537,11 +597,28 @@ function getGameEmoji(category) {
     return emojis[category] || '🎮';
 }
 
+function formatLastPlayed(timestamp) {
+    const minutes = Math.floor((Date.now() - timestamp) / 60000);
+    if (minutes < 1) return 'Played just now';
+    if (minutes < 60) return `Played ${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Played ${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `Played ${days}d ago`;
+    return `Played ${new Date(timestamp).toLocaleDateString()}`;
+}
+
 async function launchGame(game) {
     const displayName = getDisplayName(game);
     try {
         const result = await window.gamesWidget.launchGame(game);
-        if (!result?.ok) alert(result?.error || `Could not start ${displayName}.`);
+        if (!result?.ok) {
+            alert(result?.error || `Could not start ${displayName}.`);
+            return;
+        }
+        game.lastPlayed = Date.now();
+        saveGames();
+        if (sortBy === 'recent' || sortBy === 'group') renderGames();
     } catch (error) {
         alert(`Could not start ${displayName}: ${error.message}`);
     }
@@ -805,7 +882,7 @@ function createUserGroup(event) {
     const input = document.getElementById('newGroupName');
     const status = document.getElementById('groupFormStatus');
     const name = input.value.trim();
-    const reserved = ['Steam', 'Epic Games', 'GOG', 'Unassigned'];
+    const reserved = [...LAUNCHER_GROUPS, RECENT_GROUP, 'Unassigned'];
     if (!name) {
         status.textContent = 'Enter a name for this group.';
         input.focus();
@@ -834,11 +911,17 @@ let foundGames = [];
 let selectedFoundGames = new Set();
 
 async function startGameScan() {
-    const scanSteam = document.getElementById('scanSteam').checked;
-    const scanEpic = document.getElementById('scanEpic').checked;
-    const scanGog = document.getElementById('scanGog').checked;
+    const platforms = {
+        steam: document.getElementById('scanSteam').checked,
+        epic: document.getElementById('scanEpic').checked,
+        gog: document.getElementById('scanGog').checked,
+        xbox: document.getElementById('scanXbox').checked,
+        battlenet: document.getElementById('scanBattlenet').checked,
+        ubisoft: document.getElementById('scanUbisoft').checked,
+        ea: document.getElementById('scanEa').checked
+    };
 
-    if (!scanSteam && !scanEpic && !scanGog) {
+    if (!Object.values(platforms).some(Boolean)) {
         alert('Please select at least one platform to scan');
         return;
     }
@@ -850,9 +933,9 @@ async function startGameScan() {
     const scanStatus = document.getElementById('scanStatus');
     scanStatus.textContent = 'Checking installed game files…';
     try {
-        foundGames = await window.gamesWidget.scanInstalledGames({ steam: scanSteam, epic: scanEpic, gog: scanGog });
+        foundGames = await window.gamesWidget.scanInstalledGames(platforms);
         const selectedPlatforms = new Set([
-            ...(scanSteam ? ['Steam'] : []), ...(scanEpic ? ['Epic Games', 'Epic'] : []), ...(scanGog ? ['GOG'] : [])
+            ...(platforms.steam ? ['Steam'] : []), ...(platforms.epic ? ['Epic Games', 'Epic'] : []), ...(platforms.gog ? ['GOG'] : [])
         ]);
         const oldDemoRecords = new Set([
             'Steam|counter strike 2', 'Steam|dota 2', 'Steam|team fortress 2',
@@ -882,6 +965,24 @@ async function startGameScan() {
         displayFoundGames();
     } finally {
         document.getElementById('startScanBtn').disabled = false;
+    }
+}
+
+async function addManualGames() {
+    const button = document.getElementById('addManualGameBtn');
+    button.disabled = true;
+    try {
+        const chosen = await window.gamesWidget.chooseManualGames();
+        if (!chosen?.length) return;
+        foundGames = chosen;
+        const scanStatus = document.getElementById('scanStatus');
+        scanStatus.textContent = `Selected ${chosen.length} game${chosen.length === 1 ? '' : 's'}. You can rename them later with Edit.`;
+        displayFoundGames();
+        selectAllFoundGames();
+    } catch (error) {
+        alert(`Could not add the game: ${error.message}`);
+    } finally {
+        button.disabled = false;
     }
 }
 
@@ -974,9 +1075,8 @@ async function addSelectedGames() {
         );
         if (existingGame) {
             if (foundGame.executablePath) existingGame.executablePath = foundGame.executablePath;
-            if (foundGame.epicAppName) existingGame.epicAppName = foundGame.epicAppName;
-            if (foundGame.epicCatalogNamespace) existingGame.epicCatalogNamespace = foundGame.epicCatalogNamespace;
-            if (foundGame.epicCatalogItemId) existingGame.epicCatalogItemId = foundGame.epicCatalogItemId;
+            for (const field of LAUNCH_FIELDS) if (foundGame[field]) existingGame[field] = foundGame[field];
+            if (foundGame.lastPlayed > (existingGame.lastPlayed || 0)) existingGame.lastPlayed = foundGame.lastPlayed;
             try {
                 const result = await window.gamesWidget.getExecutableIcon(existingGame.executablePath, existingGame.installPath, existingGame.name);
                 if (result?.image) {
@@ -1002,9 +1102,8 @@ async function addSelectedGames() {
             artworkSource: artwork?.source || null,
             installPath: foundGame.installPath,
             executablePath: foundGame.executablePath || null,
-            epicAppName: foundGame.epicAppName || null,
-            epicCatalogNamespace: foundGame.epicCatalogNamespace || null,
-            epicCatalogItemId: foundGame.epicCatalogItemId || null,
+            ...Object.fromEntries(LAUNCH_FIELDS.map((field) => [field, foundGame[field] || null])),
+            lastPlayed: foundGame.lastPlayed || null,
             group: null
         };
         if (newGame.executablePath || newGame.installPath) {
@@ -1035,6 +1134,64 @@ function resetScanner() {
     document.getElementById('scanStatus').textContent = 'Scanning...';
     foundGames = [];
     selectedFoundGames.clear();
+}
+
+// Performance Mode
+const performanceHistory = { fps: [], cpu: [] };
+const PERFORMANCE_HISTORY_LENGTH = 40;
+
+function formatMetric(value, digits = 0) {
+    return Number.isFinite(value) ? value.toFixed(digits) : '--';
+}
+
+function metricTone(value, warm, hot) {
+    if (!Number.isFinite(value)) return 'idle';
+    return value >= hot ? 'hot' : value >= warm ? 'warm' : 'good';
+}
+
+function setPerformanceMetric(id, value, ringPercent, tone, digits = 0) {
+    document.getElementById(id).textContent = formatMetric(value, digits);
+    const ring = document.getElementById(`${id}Ring`);
+    const percent = Number.isFinite(ringPercent) ? Math.max(0, Math.min(100, ringPercent)) : 0;
+    ring.style.strokeDasharray = `${percent} 100`;
+    ring.dataset.tone = tone;
+}
+
+function resetPerformancePanel() {
+    performanceHistory.fps = [];
+    performanceHistory.cpu = [];
+    updatePerformancePanel({});
+}
+
+function updatePerformancePanel(sample = {}) {
+    const hasFps = Number.isFinite(sample.fps);
+    document.getElementById('perfFps').textContent = formatMetric(sample.fps);
+    document.getElementById('perfFrameTime').textContent = `${formatMetric(sample.frameTime ?? (hasFps && sample.fps > 0 ? 1000 / sample.fps : null), 1)} ms`;
+    setPerformanceMetric('perfCpuTemp', sample.cpuTemp, sample.cpuTemp, metricTone(sample.cpuTemp, 70, 85));
+    setPerformanceMetric('perfCpuLoad', sample.cpuLoad, sample.cpuLoad, metricTone(sample.cpuLoad, 101, 101));
+    setPerformanceMetric('perfGpuTemp', sample.gpuTemp, sample.gpuTemp, metricTone(sample.gpuTemp, 70, 85));
+    setPerformanceMetric('perfGpuLoad', sample.gpuLoad, sample.gpuLoad, metricTone(sample.gpuLoad, 101, 101));
+    setPerformanceMetric('perfRam', sample.ramUsedGb, sample.ramLoad, metricTone(sample.ramLoad, 101, 101), 1);
+
+    if (hasFps) performanceHistory.fps.push(sample.fps);
+    if (Number.isFinite(sample.cpuLoad)) performanceHistory.cpu.push(sample.cpuLoad);
+    for (const history of Object.values(performanceHistory)) history.splice(0, Math.max(0, history.length - PERFORMANCE_HISTORY_LENGTH));
+    const history = hasFps ? performanceHistory.fps : performanceHistory.cpu;
+    const max = Math.max(hasFps ? 60 : 100, ...history);
+    const step = 100 / (PERFORMANCE_HISTORY_LENGTH - 1);
+    const offset = PERFORMANCE_HISTORY_LENGTH - history.length;
+    document.getElementById('perfGraph').setAttribute('points', history.length > 1
+        ? history.map((value, index) => `${((offset + index) * step).toFixed(2)},${(22 - (value / max) * 20).toFixed(2)}`).join(' ')
+        : '0,22 100,22');
+
+    const notes = [];
+    const sources = Array.isArray(sample.sources) ? sample.sources : [];
+    if (sources.length) notes.push(`via ${sources.join(', ')}`);
+    if (!hasFps && sample.ramTotalGb) notes.push('FPS: run RivaTuner (RTSS)');
+    if (!Number.isFinite(sample.cpuTemp) && !Number.isFinite(sample.gpuTemp) && sample.ramTotalGb) notes.push('Temps: run MSI Afterburner');
+    const source = document.getElementById('perfSource');
+    source.textContent = notes.join(' · ');
+    source.title = 'FPS comes from RivaTuner Statistics Server. Temperatures come from MSI Afterburner or LibreHardwareMonitor when they are running.';
 }
 
 // Initialize the app

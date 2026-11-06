@@ -75,6 +75,26 @@ body {
     background: #ff4757;
 }
 
+.performance-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    vertical-align: top;
+}
+
+.performance-btn svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.performance-btn svg circle { fill: currentColor; stroke: none; }
+.performance-btn:hover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+
 /* Widget Header */
 .widget-header {
     padding: 16px 20px;
@@ -510,6 +530,21 @@ select option {
     margin-bottom: 4px;
 }
 
+.game-last-played {
+    font-size: 10px;
+    color: #9aa8ff;
+    margin-bottom: 4px;
+}
+
+.games-section-title {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+}
+
 .game-group {
     font-size: 10px;
     color: #667eea;
@@ -873,3 +908,109 @@ body.compact .scanner-panel { display: none !important; }
 body.compact .header-controls,
 body.compact .search-filter-bar,
 body.compact .games-grid { display: none !important; }
+
+.manual-game-option { justify-content: space-between; cursor: default; }
+.manual-game-option .btn { margin-right: 0; padding: 6px 12px; font-size: 12px; }
+
+/* Performance mode turns the widget into a small hardware stats overlay. */
+.performance-panel { display: none; }
+body.performance .widget-container {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+body.performance .compact-icon,
+body.performance .window-controls,
+body.performance .widget-header,
+body.performance .search-filter-bar,
+body.performance .games-grid,
+body.performance .settings-panel,
+body.performance .scanner-panel { display: none !important; }
+body.performance .performance-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    background: rgba(30, 30, 33, 0.9);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+body.performance .performance-panel:active { cursor: grabbing; }
+
+.perf-card {
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.perf-fps-top { display: flex; align-items: baseline; gap: 10px; }
+.perf-label {
+    flex: 0 0 34px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: rgba(255, 255, 255, 0.62);
+}
+.perf-fps-value { font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.perf-frametime { margin-left: auto; font-size: 12px; color: rgba(255, 255, 255, 0.72); font-variant-numeric: tabular-nums; }
+.perf-graph { display: block; width: 100%; height: 22px; margin-top: 2px; }
+.perf-graph polyline {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.75);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.perf-row { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.perf-metric { display: inline-flex; flex: 1; align-items: center; gap: 6px; min-width: 0; }
+.perf-ring { flex: 0 0 20px; width: 20px; height: 20px; transform: rotate(-90deg); }
+.perf-ring circle { fill: none; stroke-width: 3; }
+.perf-ring-track { stroke: rgba(255, 255, 255, 0.14); }
+.perf-ring-fill {
+    stroke: #2ed573;
+    stroke-linecap: round;
+    stroke-dasharray: 0 100;
+    transition: stroke-dasharray 0.4s ease, stroke 0.4s ease;
+}
+.perf-ring-fill[data-tone="warm"] { stroke: #ffc048; }
+.perf-ring-fill[data-tone="hot"] { stroke: #ff4757; }
+.perf-ring-fill[data-tone="idle"] { stroke: transparent; }
+.perf-value { font-size: 18px; font-variant-numeric: tabular-nums; }
+.perf-unit { margin-left: -4px; font-size: 11px; color: rgba(255, 255, 255, 0.75); }
+.perf-source {
+    min-height: 12px;
+    overflow: hidden;
+    font-size: 9.5px;
+    color: rgba(255, 255, 255, 0.45);
+    text-align: center;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.perf-exit-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 2;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    font-size: 14px;
+    line-height: 20px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+.performance-panel:hover .perf-exit-btn,
+.perf-exit-btn:focus-visible { opacity: 1; }
+.perf-exit-btn:hover { background: #ff4757; }

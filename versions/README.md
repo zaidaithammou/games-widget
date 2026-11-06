@@ -7,7 +7,8 @@ Windows executables remain under the Git-ignored `build/versions/<version>/`
 directory and should be uploaded as assets to GitHub Releases.
 
 The snapshots were extracted from the installers for 1.0.0 through 1.1.3 and
-compared file by file. They contain the app files and assets packaged in each
+compared file by file. Starting with 1.2.0, each snapshot is copied from the
+source used to build that release. They contain the app files and assets packaged in each
 build, not the original Git commits or complete development workspace.
 `node_modules` and `package-lock.json` are not included; use the top-level
 `package.json` in each snapshot to identify its declared dependencies.
