@@ -53,10 +53,11 @@ public static class GamesWidgetSensors {
     try {
       using (var map = MemoryMappedFile.OpenExisting("RTSSSharedMemoryV2", MemoryMappedFileRights.Read))
       using (var view = map.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read)) {
-        if (view.ReadUInt32(0) != 0x53535452) return null;
+        uint signature = view.ReadUInt32(0);
+        // Accept both 0x53535452 (RTSS) and 0x52545353 (RTSR - different version)
+        if (signature != 0x53535452 && signature != 0x52545353) return null;
         uint entrySize = view.ReadUInt32(8), arrayOffset = view.ReadUInt32(12), arraySize = view.ReadUInt32(16);
         uint foreground; GetWindowThreadProcessId(GetForegroundWindow(), out foreground);
-        uint now = (uint)Environment.TickCount;
         double[] latest = null; uint latestTime = 0;
         for (uint i = 0; i < arraySize && i < 256; i++) {
           long offset = arrayOffset + (long)i * entrySize;
@@ -64,7 +65,9 @@ public static class GamesWidgetSensors {
           if (processId == 0) continue;
           uint time0 = view.ReadUInt32(offset + 268), time1 = view.ReadUInt32(offset + 272);
           uint frames = view.ReadUInt32(offset + 276), frameTime = view.ReadUInt32(offset + 280);
-          if (time1 <= time0 || frames == 0 || now - time1 > 3000) continue;
+          // Don't check absolute time - RTSS uses different time source than TickCount
+          // Just check that time is increasing and frames > 0
+          if (time1 <= time0 || frames == 0) continue;
           var sample = new double[] { 1000.0 * frames / (time1 - time0), frameTime / 1000.0 };
           if (processId == foreground) return sample;
           if (time1 > latestTime) { latestTime = time1; latest = sample; }
