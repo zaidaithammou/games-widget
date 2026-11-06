@@ -5,23 +5,30 @@ const { createHash } = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 const { execFileSync } = require('node:child_process');
 const { spawn } = require('node:child_process');
+const { createPerformanceMonitor } = require('./performance-monitor');
 
 const MIN_WINDOW_WIDTH = 520;
 const MIN_WINDOW_HEIGHT = 460;
 const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
+const PERFORMANCE_WINDOW_WIDTH = 236;
+const PERFORMANCE_WINDOW_HEIGHT = 250;
+const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;
 let tray;
 let isQuitting = false;
-let compact = false;
+let windowMode = 'normal';
 let expandedBounds;
 let dragTimer;
 let saveBoundsTimer;
 let dragOrigin;
 let appliedWindowLimits = '';
 const artworkLookupCache = new Map();
+const performanceMonitor = createPerformanceMonitor((sample) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('widget:performance-sample', sample);
+});
 const settingsPath = () => path.join(app.getPath('userData'), 'widget-settings.json');
 const libraryPath = () => path.join(app.getPath('userData'), 'games-library.json');
 const groupsPath = () => path.join(app.getPath('userData'), 'user-groups.json');
@@ -35,7 +42,7 @@ function saveWindowBounds() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const settings = readSettings();
   const bounds = mainWindow.getBounds();
-  settings.bounds = compact && settings.bounds
+  settings.bounds = windowMode !== 'normal' && settings.bounds
     ? { ...settings.bounds, x: bounds.x, y: bounds.y }
     : bounds;
   try {
@@ -56,14 +63,23 @@ function getInitialBounds() {
   return constrainBounds(bounds, screen.getDisplayMatching(bounds));
 }
 
-function constrainBounds(bounds, display = screen.getDisplayMatching(bounds), compactMode = compact) {
+function miniWindowSize(mode) {
+  return mode === 'performance'
+    ? { width: PERFORMANCE_WINDOW_WIDTH, height: PERFORMANCE_WINDOW_HEIGHT }
+    : { width: COMPACT_WINDOW_SIZE, height: COMPACT_WINDOW_SIZE };
+}
+
+function constrainBounds(bounds, display = screen.getDisplayMatching(bounds), mode = windowMode) {
   const area = display.workArea;
-  if (compactMode) {
+  if (mode !== 'normal') {
+    const size = miniWindowSize(mode);
+    const width = Math.min(size.width, area.width);
+    const height = Math.min(size.height, area.height);
     return {
-      x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - COMPACT_WINDOW_SIZE)),
-      y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - COMPACT_WINDOW_SIZE)),
-      width: Math.min(COMPACT_WINDOW_SIZE, area.width),
-      height: Math.min(COMPACT_WINDOW_SIZE, area.height)
+      x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - width)),
+      y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - height)),
+      width,
+      height
     };
   }
   const maxWidth = Math.max(1, Math.min(MAX_WINDOW_WIDTH, area.width));
@@ -83,10 +99,12 @@ function constrainBounds(bounds, display = screen.getDisplayMatching(bounds), co
 function updateWindowLimits(display) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const area = display.workArea;
-  const minWidth = compact ? Math.min(COMPACT_WINDOW_SIZE, area.width) : Math.min(MIN_WINDOW_WIDTH, area.width);
-  const minHeight = compact ? Math.min(COMPACT_WINDOW_SIZE, area.height) : Math.min(MIN_WINDOW_HEIGHT, area.height);
-  const maxWidth = compact ? minWidth : Math.max(1, Math.min(MAX_WINDOW_WIDTH, area.width));
-  const maxHeight = compact ? minHeight : Math.max(1, Math.min(MAX_WINDOW_HEIGHT, area.height));
+  const mini = windowMode !== 'normal';
+  const size = miniWindowSize(windowMode);
+  const minWidth = Math.min(mini ? size.width : MIN_WINDOW_WIDTH, area.width);
+  const minHeight = Math.min(mini ? size.height : MIN_WINDOW_HEIGHT, area.height);
+  const maxWidth = mini ? minWidth : Math.max(1, Math.min(MAX_WINDOW_WIDTH, area.width));
+  const maxHeight = mini ? minHeight : Math.max(1, Math.min(MAX_WINDOW_HEIGHT, area.height));
   const signature = `${minWidth}:${minHeight}:${maxWidth}:${maxHeight}`;
   if (signature === appliedWindowLimits) return;
   appliedWindowLimits = signature;
@@ -105,25 +123,25 @@ function enforceWindowBounds() {
   }
 }
 
-function setCompactMode(nextCompact) {
-  if (!mainWindow || mainWindow.isDestroyed() || compact === nextCompact) return;
-  if (nextCompact) {
+function setWindowMode(nextMode) {
+  if (!mainWindow || mainWindow.isDestroyed() || windowMode === nextMode) return;
+  if (windowMode === 'normal') {
     saveWindowBounds();
     expandedBounds = mainWindow.getBounds();
-    compact = true;
-    appliedWindowLimits = '';
-    const display = screen.getDisplayMatching(expandedBounds);
-    updateWindowLimits(display);
-    mainWindow.setBounds(constrainBounds({ ...expandedBounds, width: COMPACT_WINDOW_SIZE, height: COMPACT_WINDOW_SIZE }, display, true), false);
-  } else {
-    compact = false;
-    appliedWindowLimits = '';
-    const bounds = expandedBounds || readSettings().bounds || { width: 520, height: 500, x: 100, y: 100 };
-    const display = screen.getDisplayMatching(bounds);
-    updateWindowLimits(display);
-    mainWindow.setBounds(constrainBounds(bounds, display, false), false);
   }
-  mainWindow.webContents.send('widget:compact-state', compact);
+  windowMode = nextMode;
+  appliedWindowLimits = '';
+  const bounds = nextMode === 'normal'
+    ? expandedBounds || readSettings().bounds || { width: 520, height: 500, x: 100, y: 100 }
+    : { ...mainWindow.getBounds(), ...miniWindowSize(nextMode) };
+  const display = screen.getDisplayMatching(bounds);
+  updateWindowLimits(display);
+  mainWindow.setBounds(constrainBounds(bounds, display), false);
+  mainWindow.setAlwaysOnTop(true, nextMode === 'performance' ? 'screen-saver' : 'floating');
+  if (nextMode === 'performance' && mainWindow.isVisible()) performanceMonitor.start();
+  else performanceMonitor.stop();
+  mainWindow.webContents.send('widget:compact-state', nextMode === 'compact');
+  mainWindow.webContents.send('widget:mode', nextMode);
 }
 
 function beginDrag() {
@@ -154,7 +172,41 @@ function endDrag() {
 
 function runRegistryQuery(key) {
   try {
-    return execFileSync('reg.exe', ['query', key, '/s'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+    return execFileSync('reg.exe', ['query', key, '/s'], { encoding: 'utf8', timeout: 8000, windowsHide: true, maxBuffer: 32 * 1024 * 1024 });
+  } catch { return ''; }
+}
+
+function readRegistryEntries(key) {
+  return runRegistryQuery(key).split(/\r?\n(?=HKEY_)/i).map((block) => {
+    const lines = block.split(/\r?\n/);
+    const keyPath = lines[0].trim();
+    if (!/^HKEY_/i.test(keyPath)) return null;
+    const values = {};
+    for (const line of lines.slice(1)) {
+      const match = line.match(/^\s+(.+?)\s{2,}(REG_\w+)\s{2,}(.*)$/);
+      if (match) values[match[1].trim().toLowerCase()] = match[3].trim();
+    }
+    return { key: keyPath, values };
+  }).filter(Boolean);
+}
+
+function uninstallEntries() {
+  return [
+    'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+    'HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+    'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall'
+  ].flatMap(readRegistryEntries).filter((entry) => entry.values.displayname);
+}
+
+function existingDirectory(value) {
+  const cleaned = String(value || '').trim().replace(/^"|"$/g, '');
+  if (!cleaned || !path.isAbsolute(cleaned)) return null;
+  try { return fs.statSync(cleaned).isDirectory() ? path.resolve(cleaned) : null; } catch { return null; }
+}
+
+function runPowerShell(script, timeout = 30000) {
+  try {
+    return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
   } catch { return ''; }
 }
 
@@ -224,11 +276,31 @@ function scanSteam() {
         const stateFlags = Number(acf.match(/"StateFlags"\s+"(\d+)"/i)?.[1] || 0);
         if (!name || !(stateFlags & 4) || !installDir || !fs.existsSync(path.join(appsDir, 'common', installDir))) continue;
         const installPath = path.join(appsDir, 'common', installDir);
-        games.push({ id: `steam-${manifest[1]}`, steamAppId: manifest[1], name, category: 'Steam', platform: 'Steam', installPath, executablePath: findGameExecutable(installPath, name) });
+        const lastPlayed = Number(acf.match(/"LastPlayed"\s+"(\d+)"/i)?.[1] || 0) * 1000 || null;
+        games.push({ id: `steam-${manifest[1]}`, steamAppId: manifest[1], name, category: 'Steam', platform: 'Steam', installPath, executablePath: findGameExecutable(installPath, name), lastPlayed });
       } catch { /* Ignore incomplete or unreadable manifests */ }
     }
   }
   return games;
+}
+
+function steamLastPlayedTimes() {
+  const times = {};
+  if (process.platform !== 'win32') return times;
+  for (const root of steamRoots()) {
+    const appsDir = path.join(root, 'steamapps');
+    let files = [];
+    try { files = fs.readdirSync(appsDir); } catch { continue; }
+    for (const file of files) {
+      const appId = file.match(/^appmanifest_(\d+)\.acf$/i)?.[1];
+      if (!appId) continue;
+      try {
+        const lastPlayed = Number(fs.readFileSync(path.join(appsDir, file), 'utf8').match(/"LastPlayed"\s+"(\d+)"/i)?.[1] || 0) * 1000;
+        if (lastPlayed > (times[appId] || 0)) times[appId] = lastPlayed;
+      } catch { /* Ignore unreadable manifests. */ }
+    }
+  }
+  return times;
 }
 
 function scanEpic() {
@@ -307,12 +379,184 @@ function scanGog() {
   return games;
 }
 
+const XBOX_SCAN_SCRIPT = String.raw`
+$ErrorActionPreference = 'SilentlyContinue'
+$games = foreach ($package in Get-AppxPackage) {
+  if ($package.IsFramework -or -not $package.InstallLocation) { continue }
+  $configPath = Join-Path $package.InstallLocation 'MicrosoftGame.config'
+  if (-not (Test-Path -LiteralPath $configPath)) { continue }
+  [xml]$config = Get-Content -LiteralPath $configPath -Raw
+  $manifest = Get-AppxPackageManifest $package
+  [pscustomobject]@{
+    name = $config.Game.ShellVisuals.DefaultDisplayName
+    manifestName = $manifest.Package.Properties.DisplayName
+    packageName = $package.Name
+    family = $package.PackageFamilyName
+    appId = @($manifest.Package.Applications.Application)[0].Id
+    installPath = $package.InstallLocation
+    executable = @($config.Game.ExecutableList.Executable)[0].Name
+  }
+}
+ConvertTo-Json -InputObject @($games) -Compress -Depth 3
+`;
+
+function scanXbox() {
+  let packages = [];
+  try { packages = JSON.parse(runPowerShell(XBOX_SCAN_SCRIPT, 45000) || '[]'); } catch { return []; }
+  const games = [];
+  for (const item of Array.isArray(packages) ? packages : [packages]) {
+    if (!item?.family || !item.appId || !XBOX_AUMID.test(`${item.family}!${item.appId}`)) continue;
+    const name = [item.name, item.manifestName, item.packageName].find((value) => typeof value === 'string' && value.trim() && !/^ms-resource:/i.test(value));
+    const executablePath = item.executable ? path.join(item.installPath, item.executable) : null;
+    games.push({
+      id: `xbox-${item.family}`,
+      name: name.trim(),
+      category: 'Xbox',
+      platform: 'Xbox',
+      installPath: item.installPath,
+      executablePath: executablePath && fs.existsSync(executablePath) ? executablePath : null,
+      xboxPackageFamilyName: item.family,
+      xboxAppId: item.appId
+    });
+  }
+  return games;
+}
+
+const BATTLE_NET_PRODUCT_CODES = {
+  overwatch: 'Pro', wow: 'WoW', wow_classic: 'WoW_wow_classic', diablo3: 'D3', fenris: 'Fen', hs_beta: 'WTCG',
+  s2: 'S2', s1: 'S1', heroes: 'Hero', w3: 'W3', odin: 'ODIN', viper: 'VIPR', zeus: 'ZEUS', lazarus: 'LAZR', osi: 'OSI'
+};
+
+function battleNetLauncher() {
+  return [process.env['ProgramFiles(x86)'], process.env.ProgramFiles]
+    .filter(Boolean)
+    .map((base) => path.join(base, 'Battle.net', 'Battle.net.exe'))
+    .find((file) => fs.existsSync(file)) || null;
+}
+
+function scanBattleNet(entries) {
+  const games = [];
+  for (const entry of entries) {
+    const { displayname: name, publisher = '', uninstallstring = '' } = entry.values;
+    if (!/battle\.net/i.test(uninstallstring) && !/blizzard/i.test(publisher)) continue;
+    if (/^battle\.net/i.test(name)) continue;
+    const installPath = existingDirectory(entry.values.installlocation);
+    if (!installPath) continue;
+    const uid = uninstallstring.match(/--uid=([\w-]+)/i)?.[1]?.toLowerCase() || '';
+    const productCode = BATTLE_NET_PRODUCT_CODES[uid] || BATTLE_NET_PRODUCT_CODES[uid.replace(/_[a-z]{4}$/, '')] || null;
+    games.push({
+      id: `battlenet-${uid || path.basename(installPath).toLowerCase()}`,
+      name,
+      category: 'Battle.net',
+      platform: 'Battle.net',
+      installPath,
+      executablePath: findGameExecutable(installPath, name),
+      battleNetProductCode: productCode
+    });
+  }
+  return games;
+}
+
+function scanUbisoft(entries) {
+  const games = [];
+  const installs = [
+    'HKLM\\SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs',
+    'HKLM\\SOFTWARE\\Ubisoft\\Launcher\\Installs'
+  ].flatMap(readRegistryEntries);
+  for (const entry of installs) {
+    const ubisoftId = entry.key.match(/\\Installs\\(\d+)$/i)?.[1];
+    const installPath = existingDirectory(entry.values.installdir);
+    if (!ubisoftId || !installPath) continue;
+    const uninstall = entries.find((item) => item.key.match(/\\Uplay Install (\d+)$/i)?.[1] === ubisoftId);
+    const name = uninstall?.values.displayname || path.basename(installPath);
+    games.push({
+      id: `ubisoft-${ubisoftId}`,
+      name,
+      category: 'Ubisoft',
+      platform: 'Ubisoft Connect',
+      installPath,
+      executablePath: findGameExecutable(installPath, name),
+      ubisoftId
+    });
+  }
+  return games;
+}
+
+function scanEa(entries) {
+  const candidates = new Map();
+  const isEaInstall = (installPath) => fs.existsSync(path.join(installPath, '__Installer', 'installerdata.xml'));
+  for (const entry of entries) {
+    const { displayname: name, publisher = '' } = entry.values;
+    if (/^(ea app|ea desktop|origin)\b/i.test(name)) continue;
+    const installPath = existingDirectory(entry.values.installlocation);
+    if (!installPath || !(/electronic arts|ea swiss/i.test(publisher) || isEaInstall(installPath))) continue;
+    candidates.set(installPath.toLowerCase(), { name, installPath });
+  }
+  for (const base of [process.env.ProgramFiles, process.env['ProgramFiles(x86)']].filter(Boolean)) {
+    const libraryRoot = path.join(base, 'EA Games');
+    let folders = [];
+    try { folders = fs.readdirSync(libraryRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()); } catch { continue; }
+    for (const folder of folders) {
+      const installPath = path.join(libraryRoot, folder.name);
+      if (isEaInstall(installPath) && !candidates.has(installPath.toLowerCase())) candidates.set(installPath.toLowerCase(), { name: folder.name, installPath });
+    }
+  }
+  return [...candidates.values()].map(({ name, installPath }) => ({
+    id: `ea-${createHash('sha256').update(installPath.toLowerCase()).digest('hex').slice(0, 16)}`,
+    name,
+    category: 'EA',
+    platform: 'EA App',
+    installPath,
+    executablePath: findGameExecutable(installPath, name)
+  }));
+}
+
+function readableGameName(executablePath, productName) {
+  const product = String(productName || '').replace(/[™®©]/g, '').trim();
+  if (product && !/windows|unreal|unity|bootstrap|launcher|setup/i.test(product)) return product;
+  return path.basename(executablePath, path.extname(executablePath))
+    .replace(/[-_](win(32|64)|shipping|x64|x86|dx1[12])\b/gi, '')
+    .replace(/[-_.]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .trim();
+}
+
+async function chooseManualGames() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose game executables',
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Games', extensions: ['exe'] }]
+  });
+  if (result.canceled) return [];
+  const files = result.filePaths.filter((file) => path.extname(file).toLowerCase() === '.exe' && fs.existsSync(file)).map((file) => path.resolve(file));
+  let productNames = {};
+  if (process.platform === 'win32' && files.length) {
+    const list = JSON.stringify(files).replace(/'/g, "''");
+    const output = runPowerShell(`$names = @{}; foreach ($file in ('${list}' | ConvertFrom-Json)) { $names[$file] = (Get-Item -LiteralPath $file).VersionInfo.ProductName }; $names | ConvertTo-Json -Compress`, 15000);
+    try { productNames = JSON.parse(output || '{}') || {}; } catch { productNames = {}; }
+  }
+  return files.map((file) => ({
+    id: `manual-${createHash('sha256').update(file.toLowerCase()).digest('hex').slice(0, 16)}`,
+    name: readableGameName(file, productNames[file]),
+    category: 'Manual',
+    platform: 'Manual',
+    installPath: path.dirname(file),
+    executablePath: file
+  }));
+}
+
 function discoverInstalledGames(platforms = {}) {
   if (process.platform !== 'win32') throw new Error('Installed game scanning is currently supported on Windows only.');
   const results = [];
   if (platforms.steam) results.push(...scanSteam());
   if (platforms.epic) results.push(...scanEpic());
   if (platforms.gog) results.push(...scanGog());
+  if (platforms.xbox) results.push(...scanXbox());
+  const entries = platforms.battlenet || platforms.ubisoft || platforms.ea ? uninstallEntries() : [];
+  if (platforms.battlenet) results.push(...scanBattleNet(entries));
+  if (platforms.ubisoft) results.push(...scanUbisoft(entries));
+  if (platforms.ea) results.push(...scanEa(entries));
   return [...new Map(results.map((game) => [`${game.platform}:${game.id}`, game])).values()];
 }
 
@@ -573,13 +817,15 @@ function createWindow() {
   mainWindow.on('close', (event) => {
     if (!isQuitting) { event.preventDefault(); mainWindow.hide(); }
   });
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('hide', () => performanceMonitor.stop());
+  mainWindow.on('show', () => { if (windowMode === 'performance') performanceMonitor.start(); });
+  mainWindow.on('closed', () => { mainWindow = null; performanceMonitor.stop(); });
   if (process.argv.includes('--dev')) mainWindow.webContents.openDevTools({ mode: 'detach' });
 }
 
 function showWidget() {
   if (!mainWindow) createWindow();
-  if (compact) setCompactMode(false);
+  if (windowMode !== 'normal') setWindowMode('normal');
   mainWindow.show();
   mainWindow.focus();
 }
@@ -605,11 +851,14 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
-  ipcMain.on('widget:minimize', () => setCompactMode(!compact));
+  ipcMain.on('widget:minimize', () => setWindowMode(windowMode === 'normal' ? 'compact' : 'normal'));
+  ipcMain.on('widget:performance', () => setWindowMode(windowMode === 'performance' ? 'normal' : 'performance'));
   ipcMain.on('widget:close', () => mainWindow?.hide());
   ipcMain.on('widget:drag-start', beginDrag);
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
+  ipcMain.handle('games:choose-manual', () => chooseManualGames());
+  ipcMain.handle('games:steam-last-played', () => steamLastPlayedTimes());
   ipcMain.handle('games:artwork', (_event, query, appId) => lookupArtwork(query, appId));
   ipcMain.handle('games:load', () => {
     try {
@@ -658,6 +907,20 @@ app.whenReady().then(() => {
           await shell.openExternal(`com.epicgames.launcher://apps/${epicTarget}?action=launch&silent=true`);
           return { ok: true };
         }
+      }
+      const xboxAumid = `${game.xboxPackageFamilyName || ''}!${game.xboxAppId || ''}`;
+      if (game.platform === 'Xbox' && XBOX_AUMID.test(xboxAumid)) {
+        spawn('explorer.exe', [`shell:AppsFolder\\${xboxAumid}`], { detached: true, stdio: 'ignore' }).unref();
+        return { ok: true };
+      }
+      if (game.platform === 'Ubisoft Connect' && /^\d+$/.test(String(game.ubisoftId || ''))) {
+        await shell.openExternal(`uplay://launch/${game.ubisoftId}/0`);
+        return { ok: true };
+      }
+      const battleNet = game.platform === 'Battle.net' && /^[\w]+$/.test(String(game.battleNetProductCode || '')) ? battleNetLauncher() : null;
+      if (battleNet) {
+        spawn(battleNet, [`--exec=launch ${game.battleNetProductCode}`], { detached: true, stdio: 'ignore' }).unref();
+        return { ok: true };
       }
       const root = typeof game.installPath === 'string' ? path.resolve(game.installPath) : '';
       let executablePath = typeof game.executablePath === 'string' ? path.resolve(game.executablePath) : '';
@@ -714,5 +977,5 @@ app.whenReady().then(() => {
   app.on('activate', showWidget);
 });
 
-app.on('before-quit', () => { isQuitting = true; endDrag(); globalShortcut.unregisterAll(); });
+app.on('before-quit', () => { isQuitting = true; performanceMonitor.stop(); endDrag(); globalShortcut.unregisterAll(); });
 app.on('window-all-closed', () => { /* Keep the tray resident until the user selects Quit. */ });

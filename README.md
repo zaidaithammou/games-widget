@@ -4,14 +4,16 @@ Games Widget is a lightweight Windows desktop companion for organizing and launc
 
 ## Features
 
-- **Scan installed games** from Steam, Epic Games, and GOG, then choose which detected games to add.
+- **Scan installed games** from Steam, Epic Games, GOG Galaxy, Xbox / Microsoft Store, Battle.net, Ubisoft Connect, and the EA App, then choose which detected games to add. Games installed outside a launcher can be added manually by selecting their executable.
+- **Recently Played** sorts the library by the games you last launched, shows when each was played, and adds a Recently Played folder to the group view. Steam play history is imported from Steam's app manifests.
 - **Disk View** presents game artwork in circular disc cards.
 - **Icon / Wallpaper View** displays fitted landscape artwork in each game card.
 - **Artwork lookup** searches available Steam and Epic Games Store sources, with a backup provider for titles that are missing artwork.
 - **Custom game artwork** lets you choose a local image for an individual game. The image is copied into the app's user data so it remains available after restart.
 - **Game editing** lets you change a game's displayed name and custom wallpaper while retaining its original launcher identity for artwork and launching.
-- **Game launching** supports Steam links, Epic Games Launcher links, and installed executable paths when available.
-- **Launcher folders and custom groups** organize games by Steam, Epic Games, GOG, or groups you create. Right-click a game to move it to a custom group; choose **Sort by Group** to browse folder-style groups.
+- **Game launching** supports Steam links, Epic Games Launcher links, Xbox app entries, Ubisoft Connect links, Battle.net, and installed executable paths when available.
+- **Performance mode** turns the widget into a small always-on-top overlay showing FPS, frame time, CPU and GPU temperature and load, and RAM usage. CPU load and RAM are always available; temperatures and GPU load come from MSI Afterburner, LibreHardwareMonitor, or Windows GPU counters, and FPS comes from RivaTuner Statistics Server when it is running.
+- **Launcher folders and custom groups** organize games by launcher (Steam, Epic Games, GOG, Xbox, Battle.net, Ubisoft Connect, EA App, Manual) or groups you create. Right-click a game to move it to a custom group; choose **Sort by Group** to browse folder-style groups.
 - **Persistent library and settings** restore saved games, user groups, artwork choices, and widget placement after restart.
 - **Widget controls** include drag-to-move, resize limits, minimize-to-compact-icon, restore, and a system tray menu.
 - **Windows app icon** uses the custom Games Widget artwork in the app and tray.
@@ -102,9 +104,11 @@ Keep `build/` out of ordinary Git commits. GitHub Releases are the right place f
 2. Use the view selector to switch between **Disks** and **Icons** (fitted wallpaper artwork).
 3. Open **Settings** to create custom groups. Right-click a game and choose **Move to Group…** to assign it. Select **Sort by Group** to see the launcher and custom folders.
 4. Right-click a game and choose **Edit** to change its displayed name or select a custom wallpaper. Choose **Save** to keep the changes.
-5. Start a game with its **Play** button or the right-click **Launch** command.
-6. Drag the top bar to reposition the widget and drag its edges to resize it. Minimize leaves a small movable icon; click the icon to restore the widget.
-7. Use the system tray menu to show the widget, open settings, hide it, or quit. `Ctrl+Alt+G` toggles widget visibility.
+5. Choose **Recently Played** in the sort selector to see the games you launched most recently.
+6. Start a game with its **Play** button or the right-click **Launch** command.
+7. Select the gauge button next to minimize to open performance mode; hover the overlay and select **×** to return to the library.
+8. Drag the top bar to reposition the widget and drag its edges to resize it. Minimize leaves a small movable icon; click the icon to restore the widget.
+9. Use the system tray menu to show the widget, open settings, hide it, or quit. `Ctrl+Alt+G` toggles widget visibility.
 
 ## Project structure
 
@@ -122,6 +126,7 @@ Games Widget/
 ├── node_modules/           # Installed npm dependencies (ignored by Git)
 ├── src/
 │   ├── main.js              # Electron window, game scanning/launching, persistence, native dialogs
+│   ├── performance-monitor.js # CPU, GPU, RAM, temperature, and FPS sampling for performance mode
 │   ├── preload.js           # Limited and explicit renderer IPC API
 │   ├── index.html           # Widget and settings markup
 │   ├── renderer.js          # Library, groups, artwork, and interaction logic
