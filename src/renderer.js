@@ -63,6 +63,22 @@ async function loadSettings() {
         coverArtSelect.value = coverArtStyle;
     }
 
+    const savedPlatforms = localStorage.getItem('platformSettings');
+    if (savedPlatforms) {
+        try {
+            const platforms = JSON.parse(savedPlatforms);
+            if (platforms.steamEnabled !== undefined) document.getElementById('steamEnabled').checked = platforms.steamEnabled;
+            if (platforms.epicEnabled !== undefined) document.getElementById('epicEnabled').checked = platforms.epicEnabled;
+            if (platforms.gogEnabled !== undefined) document.getElementById('gogEnabled').checked = platforms.gogEnabled;
+            if (platforms.xboxEnabled !== undefined) document.getElementById('xboxEnabled').checked = platforms.xboxEnabled;
+            if (platforms.battlenetEnabled !== undefined) document.getElementById('battlenetEnabled').checked = platforms.battlenetEnabled;
+            if (platforms.ubisoftEnabled !== undefined) document.getElementById('ubisoftEnabled').checked = platforms.ubisoftEnabled;
+            if (platforms.eaEnabled !== undefined) document.getElementById('eaEnabled').checked = platforms.eaEnabled;
+        } catch (error) {
+            console.warn('Could not load platform settings:', error);
+        }
+    }
+
     const savedSort = localStorage.getItem('sortBy');
     if (savedSort) {
         sortBy = savedSort;
@@ -756,7 +772,26 @@ function updateCoverArtSettings() {
 // Load Settings UI
 function loadSettingsUI() {
     updateCoverArtSettings();
+    loadPlatformSettingsUI();
     renderUserGroups();
+}
+
+function loadPlatformSettingsUI() {
+    const savedPlatforms = localStorage.getItem('platformSettings');
+    if (savedPlatforms) {
+        try {
+            const platforms = JSON.parse(savedPlatforms);
+            if (platforms.steamEnabled !== undefined) document.getElementById('steamEnabled').checked = platforms.steamEnabled;
+            if (platforms.epicEnabled !== undefined) document.getElementById('epicEnabled').checked = platforms.epicEnabled;
+            if (platforms.gogEnabled !== undefined) document.getElementById('gogEnabled').checked = platforms.gogEnabled;
+            if (platforms.xboxEnabled !== undefined) document.getElementById('xboxEnabled').checked = platforms.xboxEnabled;
+            if (platforms.battlenetEnabled !== undefined) document.getElementById('battlenetEnabled').checked = platforms.battlenetEnabled;
+            if (platforms.ubisoftEnabled !== undefined) document.getElementById('ubisoftEnabled').checked = platforms.ubisoftEnabled;
+            if (platforms.eaEnabled !== undefined) document.getElementById('eaEnabled').checked = platforms.eaEnabled;
+        } catch (error) {
+            console.warn('Could not load platform settings UI:', error);
+        }
+    }
 }
 
 // Save Settings from UI
@@ -767,6 +802,18 @@ function saveSettingsFromUI() {
         localStorage.setItem('coverArtStyle', coverArtStyle);
         coverArtSelect.value = coverArtStyle;
     }
+
+    // Save platform settings
+    const platforms = {
+        steamEnabled: document.getElementById('steamEnabled').checked,
+        epicEnabled: document.getElementById('epicEnabled').checked,
+        gogEnabled: document.getElementById('gogEnabled').checked,
+        xboxEnabled: document.getElementById('xboxEnabled').checked,
+        battlenetEnabled: document.getElementById('battlenetEnabled').checked,
+        ubisoftEnabled: document.getElementById('ubisoftEnabled').checked,
+        eaEnabled: document.getElementById('eaEnabled').checked
+    };
+    localStorage.setItem('platformSettings', JSON.stringify(platforms));
 
     saveUserGroups();
     renderGames();
