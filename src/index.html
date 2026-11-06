@@ -26,9 +26,11 @@
 
             <!-- Performance Mode -->
             <section class="performance-panel" id="performancePanel" aria-label="Performance monitor">
-                <div class="perf-controls">
-                    <button class="perf-min-btn" id="performanceMinBtn" type="button" title="Minimize" aria-label="Minimize">−</button>
-                    <button class="perf-exit-btn" id="performanceExitBtn" type="button" title="Back to game library" aria-label="Back to game library">×</button>
+                <div class="perf-header">
+                    <div class="perf-controls">
+                        <button class="perf-min-btn" id="performanceMinBtn" type="button" title="Minimize" aria-label="Minimize">−</button>
+                        <button class="perf-exit-btn" id="performanceExitBtn" type="button" title="Back to game library" aria-label="Back to game library">×</button>
+                    </div>
                 </div>
                 <div class="perf-card perf-fps-card">
                     <div class="perf-fps-top">
@@ -37,6 +39,7 @@
                         <span class="perf-frametime" id="perfFrameTime">-- ms</span>
                     </div>
                     <svg class="perf-graph" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline id="perfGraph" points="0,23 100,23"/></svg>
+                    <p class="perf-fps-hint" id="perfFpsHint">Launch a game for FPS counter</p>
                 </div>
                 <div class="perf-card perf-row">
                     <span class="perf-label">CPU</span>
@@ -55,9 +58,11 @@
                 </div>
                 <p class="perf-source" id="perfSource"></p>
                 <div class="perf-downloads" id="perfDownloads" hidden>
-                    <span>Get FPS &amp; temps:</span>
-                    <button type="button" class="perf-link" data-url="https://github.com/RemiiR/RivaTunerStatisticsServer/releases">RTSS</button>
-                    <button type="button" class="perf-link" data-url="https://www.msi.com/Landing/afterburner/graphics-cards">Afterburner</button>
+                    <span>Get required dependencies:</span>
+                    <div class="perf-links-row">
+                        <button type="button" class="perf-link" data-url="https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/">RTSS</button>
+                        <button type="button" class="perf-link" data-url="https://www.msi.com/Landing/afterburner/graphics-cards">Afterburner</button>
+                    </div>
                 </div>
             </section>
 
@@ -77,7 +82,6 @@
                 <input type="text" id="searchInput" placeholder="Search games...">
                 <select id="sortSelect">
                     <option value="name">Sort by Name</option>
-                    <option value="recent">Recently Played</option>
                     <option value="category">Sort by Category</option>
                     <option value="group">Sort by Group</option>
                 </select>

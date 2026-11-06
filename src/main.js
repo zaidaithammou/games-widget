@@ -13,13 +13,15 @@ const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
 const PERFORMANCE_WINDOW_WIDTH = 236;
-const PERFORMANCE_WINDOW_HEIGHT = 250;
+const PERFORMANCE_WINDOW_HEIGHT = 270; // Clean state (no dependency links)
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 320; // When dependency links shown
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;
 let tray;
 let isQuitting = false;
 let windowMode = 'normal';
+let restoreMode = 'normal';
 let expandedBounds;
 let dragTimer;
 let saveBoundsTimer;
@@ -156,6 +158,10 @@ function setWindowMode(nextMode) {
   if (windowMode === 'normal') {
     saveWindowBounds();
     expandedBounds = mainWindow.getBounds();
+  }
+  // Track the mode to restore to when expanding from compact
+  if (nextMode === 'compact' && windowMode !== 'compact') {
+    restoreMode = windowMode;
   }
   windowMode = nextMode;
   appliedWindowLimits = '';
@@ -308,8 +314,7 @@ function scanSteam() {
         const stateFlags = Number(acf.match(/"StateFlags"\s+"(\d+)"/i)?.[1] || 0);
         if (!name || !(stateFlags & 4) || !installDir || !fs.existsSync(path.join(appsDir, 'common', installDir))) continue;
         const installPath = path.join(appsDir, 'common', installDir);
-        const lastPlayed = Number(acf.match(/"LastPlayed"\s+"(\d+)"/i)?.[1] || 0) * 1000 || null;
-        games.push({ id: `steam-${manifest[1]}`, steamAppId: manifest[1], name, category: 'Steam', platform: 'Steam', installPath, executablePath: findGameExecutable(installPath, name), lastPlayed });
+        games.push({ id: `steam-${manifest[1]}`, steamAppId: manifest[1], name, category: 'Steam', platform: 'Steam', installPath, executablePath: findGameExecutable(installPath, name) });
       } catch { /* Ignore incomplete or unreadable manifests */ }
     }
   }
@@ -317,22 +322,7 @@ function scanSteam() {
 }
 
 function steamLastPlayedTimes() {
-  const times = {};
-  if (process.platform !== 'win32') return times;
-  for (const root of steamRoots()) {
-    const appsDir = path.join(root, 'steamapps');
-    let files = [];
-    try { files = fs.readdirSync(appsDir); } catch { continue; }
-    for (const file of files) {
-      const appId = file.match(/^appmanifest_(\d+)\.acf$/i)?.[1];
-      if (!appId) continue;
-      try {
-        const lastPlayed = Number(fs.readFileSync(path.join(appsDir, file), 'utf8').match(/"LastPlayed"\s+"(\d+)"/i)?.[1] || 0) * 1000;
-        if (lastPlayed > (times[appId] || 0)) times[appId] = lastPlayed;
-      } catch { /* Ignore unreadable manifests. */ }
-    }
-  }
-  return times;
+  return {};
 }
 
 function scanEpic() {
@@ -908,17 +898,32 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
-  ipcMain.on('widget:minimize', () => setWindowMode(windowMode === 'compact' ? 'normal' : 'compact'));
+  ipcMain.on('widget:minimize', () => {
+    if (windowMode === 'compact') {
+      // Restore to the mode we were in before minimizing
+      setWindowMode(restoreMode === 'performance' ? 'performance' : 'normal');
+    } else {
+      setWindowMode('compact');
+    }
+  });
   ipcMain.on('widget:performance', () => setWindowMode(windowMode === 'performance' ? 'normal' : 'performance'));
   ipcMain.on('widget:close', () => mainWindow?.hide());
   ipcMain.on('shell:open-external', (_event, url) => {
     if (typeof url === 'string' && /^https:\/\//i.test(url)) shell.openExternal(url);
   });
+  ipcMain.on('widget:perf-height', (_event, height) => {
+    if (!mainWindow || mainWindow.isDestroyed() || windowMode !== 'performance') return;
+    const bounds = mainWindow.getBounds();
+    const newHeight = height === 'with-links' ? PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS : PERFORMANCE_WINDOW_HEIGHT;
+    if (bounds.height !== newHeight) {
+      mainWindow.setBounds({ ...bounds, height: newHeight }, false);
+    }
+  });
   ipcMain.on('widget:drag-start', beginDrag);
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
   ipcMain.handle('games:choose-manual', () => chooseManualGames());
-  ipcMain.handle('games:steam-last-played', () => steamLastPlayedTimes());
+  ipcMain.handle('games:steam-last-played', () => ({}));
   ipcMain.handle('games:artwork', (_event, query, appId) => lookupArtwork(query, appId));
   ipcMain.handle('games:load', () => {
     try {

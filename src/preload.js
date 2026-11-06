@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld('gamesWidget', {
   endDrag: () => ipcRenderer.send('widget:drag-end'),
   scanInstalledGames: (platforms) => ipcRenderer.invoke('games:scan', platforms),
   chooseManualGames: () => ipcRenderer.invoke('games:choose-manual'),
-  getSteamLastPlayed: () => ipcRenderer.invoke('games:steam-last-played'),
   findArtwork: (query, appId) => ipcRenderer.invoke('games:artwork', query, appId),
   loadGames: () => ipcRenderer.invoke('games:load'),
   saveGames: (games) => ipcRenderer.send('games:save', games),
@@ -22,5 +21,6 @@ contextBridge.exposeInMainWorld('gamesWidget', {
   onWindowMode: (callback) => ipcRenderer.on('widget:mode', (_event, mode) => callback(mode)),
   onPerformanceSample: (callback) => ipcRenderer.on('widget:performance-sample', (_event, sample) => callback(sample)),
   onOpenSettings: (callback) => ipcRenderer.on('open-settings', callback),
-  openExternal: (url) => ipcRenderer.send('shell:open-external', url)
+  openExternal: (url) => ipcRenderer.send('shell:open-external', url),
+  setPerformanceHeight: (height) => ipcRenderer.send('widget:perf-height', height)
 });
