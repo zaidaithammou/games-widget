@@ -911,6 +911,9 @@ app.whenReady().then(() => {
   ipcMain.on('widget:minimize', () => setWindowMode(windowMode === 'compact' ? 'normal' : 'compact'));
   ipcMain.on('widget:performance', () => setWindowMode(windowMode === 'performance' ? 'normal' : 'performance'));
   ipcMain.on('widget:close', () => mainWindow?.hide());
+  ipcMain.on('shell:open-external', (_event, url) => {
+    if (typeof url === 'string' && /^https:\/\//i.test(url)) shell.openExternal(url);
+  });
   ipcMain.on('widget:drag-start', beginDrag);
   ipcMain.on('widget:drag-end', endDrag);
   ipcMain.handle('games:scan', (_event, platforms) => discoverInstalledGames(platforms));
