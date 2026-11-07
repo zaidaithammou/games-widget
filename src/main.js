@@ -13,8 +13,9 @@ const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
 const PERFORMANCE_WINDOW_WIDTH = 260;
-const PERFORMANCE_WINDOW_HEIGHT = 304; // Clean vertical state (no dependency links)
-const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 344; // Vertical state with dependency links
+const PERFORMANCE_WINDOW_HEIGHT = 260; // Compact vertical state with all dependencies installed
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 304; // Vertical state with dependency links
+const PERFORMANCE_STATUS_HEIGHT = 19; // Extra vertical space for the telemetry status line
 const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
 const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 72; // Ultra-slim horizontal state
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
@@ -25,6 +26,7 @@ let isQuitting = false;
 let windowMode = 'normal';
 let performanceOrientation = 'vertical';
 let performanceDependenciesVisible = false;
+let performanceStatusVisible = false;
 let restoreMode = 'normal';
 let expandedBounds;
 let dragTimer;
@@ -76,12 +78,13 @@ function getInitialBounds() {
 }
 
 function performanceWindowSize() {
+  const statusHeight = performanceStatusVisible ? PERFORMANCE_STATUS_HEIGHT : 0;
   if (performanceOrientation === 'horizontal') {
-    return { width: PERFORMANCE_HORIZONTAL_WINDOW_WIDTH, height: PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT };
+    return { width: PERFORMANCE_HORIZONTAL_WINDOW_WIDTH, height: PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT + statusHeight };
   }
   return {
     width: PERFORMANCE_WINDOW_WIDTH,
-    height: performanceDependenciesVisible ? PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS : PERFORMANCE_WINDOW_HEIGHT
+    height: (performanceDependenciesVisible ? PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS : PERFORMANCE_WINDOW_HEIGHT) + statusHeight
   };
 }
 
@@ -1137,9 +1140,11 @@ app.whenReady().then(() => {
     const requested = layout && typeof layout === 'object' ? layout : {};
     const orientation = requested.orientation === 'horizontal' ? 'horizontal' : 'vertical';
     const showDependencies = requested.showDependencies === true;
-    if (orientation === performanceOrientation && showDependencies === performanceDependenciesVisible) return;
+    const showStatus = requested.showStatus === true;
+    if (orientation === performanceOrientation && showDependencies === performanceDependenciesVisible && showStatus === performanceStatusVisible) return;
     performanceOrientation = orientation;
     performanceDependenciesVisible = showDependencies;
+    performanceStatusVisible = showStatus;
     const bounds = mainWindow.getBounds();
     const display = screen.getDisplayMatching(bounds);
     const size = performanceWindowSize();
