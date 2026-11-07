@@ -1069,16 +1069,18 @@ const performanceHistory = { fps: [], cpu: [] };
 const PERFORMANCE_HISTORY_LENGTH = 40;
 let performanceOrientation = 'vertical';
 let performanceDependenciesVisible = false;
+let performanceStatusVisible = false;
 let performanceDependenciesInstalled = { rtss: null, afterburner: null };
 let lastPerformanceLayoutKey = '';
 
 function syncPerformanceLayout() {
-    const key = `${performanceOrientation}:${performanceDependenciesVisible}`;
+    const key = `${performanceOrientation}:${performanceDependenciesVisible}:${performanceStatusVisible}`;
     if (key === lastPerformanceLayoutKey) return;
     lastPerformanceLayoutKey = key;
     window.gamesWidget.setPerformanceLayout({
         orientation: performanceOrientation,
-        showDependencies: performanceDependenciesVisible
+        showDependencies: performanceDependenciesVisible,
+        showStatus: performanceStatusVisible
     });
 }
 
@@ -1102,14 +1104,19 @@ function setPerformanceOrientation(orientation) {
 
 function updateRtssStatus(status) {
     const element = document.getElementById('perfStatus');
-    if (!element) return;
-    if (!status || status.state === 'ok') {
-        element.hidden = true;
-        element.textContent = '';
+    performanceStatusVisible = Boolean(status && status.state !== 'ok');
+    if (!element) {
+        syncPerformanceLayout();
         return;
     }
-    element.textContent = status.message || 'RTSS status unavailable';
-    element.hidden = false;
+    if (!performanceStatusVisible) {
+        element.hidden = true;
+        element.textContent = '';
+    } else {
+        element.textContent = status.message || 'RTSS status unavailable';
+        element.hidden = false;
+    }
+    syncPerformanceLayout();
 }
 
 function updateDependencyButtons() {
