@@ -13,11 +13,11 @@ const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
 const PERFORMANCE_WINDOW_WIDTH = 260;
-const PERFORMANCE_WINDOW_HEIGHT = 290; // Clean vertical state (no dependency links)
-const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 340; // Vertical state with dependency links
-const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 620;
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 180; // Clean horizontal state
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 210; // Horizontal state with dependency links
+const PERFORMANCE_WINDOW_HEIGHT = 268; // Clean vertical state (no dependency links)
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 306; // Vertical state with dependency links
+const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 104; // Clean horizontal state
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 132; // Horizontal state with dependency links
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;
@@ -150,13 +150,13 @@ function ensureRtssRunning() {
     path.join(process.env.ProgramFiles || 'C:\\Program Files', 'RivaTuner Statistics Server', 'RTSS.exe'),
     path.join(process.env.LOCALAPPDATA || '', 'Programs', 'RivaTuner Statistics Server', 'RTSS.exe')
   ];
-  
+
   // Check if RTSS is already running
   try {
     const result = execFileSync('tasklist', ['/fi', 'imagename eq RTSS.exe', '/fo', 'csv', '/nh'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
     if (result.includes('RTSS.exe')) return; // Already running
   } catch { /* tasklist failed, continue to check paths */ }
-  
+
   // Try to start RTSS if found
   for (const rtssPath of rtssPaths) {
     if (fs.existsSync(rtssPath)) {

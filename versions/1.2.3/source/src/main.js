@@ -13,11 +13,11 @@ const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
 const PERFORMANCE_WINDOW_WIDTH = 260;
-const PERFORMANCE_WINDOW_HEIGHT = 290; // Clean vertical state (no dependency links)
-const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 340; // Vertical state with dependency links
-const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 620;
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 180; // Clean horizontal state
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 210; // Horizontal state with dependency links
+const PERFORMANCE_WINDOW_HEIGHT = 268; // Clean vertical state (no dependency links)
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 306; // Vertical state with dependency links
+const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 104; // Clean horizontal state
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 132; // Horizontal state with dependency links
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;
