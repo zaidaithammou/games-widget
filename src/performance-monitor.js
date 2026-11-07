@@ -90,11 +90,42 @@ function Get-LhmTemperatures {
   return @($null, $null)
 }
 
+function Test-GamesWidgetDependency {
+  param([string[]]$Names, [string[]]$Paths)
+  foreach ($path in $Paths) { if ($path -and (Test-Path -LiteralPath $path)) { return $true } }
+  $roots = @(
+    'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+    'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
+    'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+  )
+  $pattern = ($Names -join '|')
+  $found = Get-ItemProperty -Path $roots -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match $pattern }
+  return [bool]$found
+}
+
+$programFiles86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+$programFiles = [Environment]::GetEnvironmentVariable('ProgramFiles')
+$localAppData = [Environment]::GetEnvironmentVariable('LOCALAPPDATA')
+
+$rtssPaths = @()
+if ($programFiles86) { $rtssPaths += Join-Path $programFiles86 'RivaTuner Statistics Server\RTSS.exe' }
+if ($programFiles) { $rtssPaths += Join-Path $programFiles 'RivaTuner Statistics Server\RTSS.exe' }
+if ($localAppData) { $rtssPaths += Join-Path $localAppData 'Programs\RivaTuner Statistics Server\RTSS.exe' }
+$rtssInstalled = Test-GamesWidgetDependency -Names @('RivaTuner', 'RTSS') -Paths $rtssPaths
+
+$afterburnerPaths = @()
+if ($programFiles86) { $afterburnerPaths += Join-Path $programFiles86 'MSI Afterburner\MSIAfterburner.exe' }
+if ($programFiles) { $afterburnerPaths += Join-Path $programFiles 'MSI Afterburner\MSIAfterburner.exe' }
+if ($localAppData) { $afterburnerPaths += Join-Path $localAppData 'Programs\MSI Afterburner\MSIAfterburner.exe' }
+$afterburnerInstalled = Test-GamesWidgetDependency -Names @('MSI Afterburner', 'Afterburner') -Paths $afterburnerPaths
+
+$dependencies = [ordered]@{ rtss = $rtssInstalled; afterburner = $afterburnerInstalled }
+
 $checkLhmAt = 0
 $lhm = @($null, $null)
 while ($true) {
   $started = [Environment]::TickCount
-  $sample = [ordered]@{ cpuTemp = $null; gpuTemp = $null; gpuLoad = $null; fps = $null; frameTime = $null; sources = @() }
+  $sample = [ordered]@{ cpuTemp = $null; gpuTemp = $null; gpuLoad = $null; fps = $null; frameTime = $null; sources = @(); dependencies = $dependencies }
   $afterburner = [GamesWidgetSensors]::Afterburner()
   if ($afterburner) {
     $sample.cpuTemp = $afterburner[0]; $sample.gpuTemp = $afterburner[1]; $sample.gpuLoad = $afterburner[2]
@@ -183,7 +214,8 @@ function createPerformanceMonitor(onSample) {
       ramUsedGb: roundOrNull(ramUsed / 1024 ** 3, 1),
       ramTotalGb: roundOrNull(ramTotal / 1024 ** 3, 1),
       ramLoad: roundOrNull(100 * ramUsed / ramTotal),
-      sources: [...new Set(Array.isArray(hardware.sources) ? hardware.sources : hardware.sources ? [hardware.sources] : [])]
+      sources: [...new Set(Array.isArray(hardware.sources) ? hardware.sources : hardware.sources ? [hardware.sources] : [])],
+      dependencies: hardware.dependencies && typeof hardware.dependencies === 'object' ? hardware.dependencies : null
     });
   }
 

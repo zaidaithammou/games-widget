@@ -970,7 +970,7 @@ body.performance.performance-horizontal .perf-frametime { font-size: 10px; }
 body.performance.performance-horizontal .perf-graph { height: 14px; margin-top: 2px; }
 body.performance.performance-horizontal .perf-fps-hint { display: none !important; }
 body.performance.performance-horizontal .perf-downloads { flex-direction: row; gap: 8px; }
-body.performance.performance-horizontal .perf-downloads > span { margin-bottom: 0; }
+body.performance.performance-horizontal .perf-downloads > span { display: none; }
 body.performance.performance-horizontal .perf-links-row { flex-wrap: nowrap; }
 
 .perf-card {
@@ -1062,6 +1062,14 @@ body.performance.performance-horizontal .perf-links-row { flex-wrap: nowrap; }
     flex-shrink: 0;
 }
 .perf-link:hover { background: rgba(102, 126, 234, 0.25); }
+.perf-link.is-installed,
+.perf-link:disabled {
+    border-color: rgba(46, 213, 115, 0.55);
+    background: rgba(46, 213, 115, 0.14);
+    color: #7bed9f;
+    cursor: default;
+}
+.perf-link.is-installed:hover { background: rgba(46, 213, 115, 0.2); }
 
 .perf-header {
     display: flex;
