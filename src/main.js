@@ -13,8 +13,8 @@ const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
 const PERFORMANCE_WINDOW_WIDTH = 260;
-const PERFORMANCE_WINDOW_HEIGHT = 268; // Clean vertical state (no dependency links)
-const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 306; // Vertical state with dependency links
+const PERFORMANCE_WINDOW_HEIGHT = 312; // Clean vertical state (no dependency links)
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 352; // Vertical state with dependency links
 const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
 const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 72; // Ultra-slim horizontal state
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
@@ -155,7 +155,11 @@ function rtssInstallPaths() {
 function isRtssRunning() {
   try {
     const result = execFileSync('tasklist', ['/fi', 'imagename eq RTSS.exe', '/fo', 'csv', '/nh'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
-    return result.includes('RTSS.exe');
+    if (result.includes('RTSS.exe')) return true;
+  } catch { /* Fall back to PowerShell process lookup. */ }
+  try {
+    const processName = runPowerShell('Get-Process -Name RTSS -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty ProcessName', 5000).trim();
+    return Boolean(processName);
   } catch { return false; }
 }
 
@@ -191,20 +195,24 @@ function ensureRtssRunning() {
   }
   const rtssPath = rtssInstallPaths().find((candidate) => fs.existsSync(candidate));
   if (!rtssPath) {
-    notifyRtssStatus({ state: 'missing', message: 'RTSS is not installed.' });
+    notifyRtssStatus({ state: 'missing', message: 'Telemetry offline: RTSS is not installed.' });
     return;
   }
   const child = spawnDetached(rtssPath, [], { windowsHide: false }, (error) => {
+    if (isRtssRunning()) {
+      notifyRtssStatus({ state: 'ok' });
+      return;
+    }
     const needsAdmin = error && (error.code === 'EACCES' || /EACCES|permission denied/i.test(String(error.message)));
     if (needsAdmin && !rtssElevationAttempted) {
       rtssElevationAttempted = true;
-      notifyRtssStatus({ state: 'error', message: 'RTSS needs administrator permission; requesting elevation…' });
+      notifyRtssStatus({ state: 'error', message: 'Telemetry needs admin; requesting RTSS elevation…' });
       requestRtssElevation(rtssPath);
       return;
     }
     notifyRtssStatus({
       state: 'error',
-      message: needsAdmin ? 'RTSS needs administrator permission to start.' : 'Could not start RTSS.'
+      message: needsAdmin ? 'Telemetry offline: RTSS needs administrator permission.' : 'Telemetry offline: could not start RTSS.'
     });
   });
   if (child) {
@@ -214,7 +222,7 @@ function ensureRtssRunning() {
       if (windowMode !== 'performance') return;
       notifyRtssStatus(isRtssRunning()
         ? { state: 'ok' }
-        : { state: 'error', message: 'RTSS did not start.' });
+        : { state: 'error', message: 'Telemetry offline: RTSS did not start.' });
     }, 5000);
   }
 }

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Games Widget</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div class="widget-container">
+            <button class="compact-icon" id="compactRestoreBtn" aria-label="Expand Games Widget" title="Expand Games Widget">
+                <img src="../assets/icon.png" alt="">
+            </button>
+            <!-- Window Controls -->
+            <div class="window-controls">
+                <img class="window-menu-icon" src="../assets/icon.png" alt="Games Widget">
+                <div class="window-control-buttons">
+                    <button class="control-btn settings-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙️</button>
+                    <button class="control-btn performance-btn" id="performanceBtn" title="Performance mode" aria-label="Performance mode">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4.5-6"/><circle cx="12" cy="18" r="1.4"/></svg>
+                    </button>
+                    <button class="control-btn minimize-btn" id="minimizeBtn">−</button>
+                    <button class="control-btn close-btn" id="closeBtn">×</button>
+                </div>
+            </div>
+
+            <!-- Performance Mode -->
+            <section class="performance-panel" id="performancePanel" aria-label="Performance monitor">
+                <div class="perf-header">
+                    <button class="perf-menu-btn" id="performanceLayoutBtn" type="button" title="Switch to horizontal layout" aria-label="Switch to horizontal layout" aria-pressed="false">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                    </button>
+                    <div class="perf-controls">
+                        <button class="perf-min-btn" id="performanceMinBtn" type="button" title="Minimize" aria-label="Minimize">−</button>
+                        <button class="perf-exit-btn" id="performanceExitBtn" type="button" title="Back to game library" aria-label="Back to game library">×</button>
+                    </div>
+                </div>
+                <p class="perf-status" id="perfStatus" hidden></p>
+                <div class="perf-stats">
+                    <div class="perf-card perf-fps-card">
+                        <div class="perf-fps-top">
+                            <span class="perf-label">FPS</span>
+                            <span class="perf-fps-value" id="perfFps">--</span>
+                            <span class="perf-frametime" id="perfFrameTime">-- ms</span>
+                        </div>
+                        <svg class="perf-graph" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline id="perfGraph" points="0,23 100,23"/></svg>
+                        <p class="perf-fps-hint" id="perfFpsHint">Launch a game for FPS counter</p>
+                    </div>
+                    <div class="perf-card perf-row">
+                        <span class="perf-label">CPU</span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfCpuTempRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfCpuTemp">--</span><span class="perf-unit">°C</span></span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfCpuLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfCpuLoad">--</span><span class="perf-unit">%</span></span>
+                    </div>
+                    <div class="perf-card perf-row">
+                        <span class="perf-label">GPU</span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfGpuTempRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfGpuTemp">--</span><span class="perf-unit">°C</span></span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfGpuLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfGpuLoad">--</span><span class="perf-unit">%</span></span>
+                    </div>
+                    <div class="perf-card perf-row">
+                        <span class="perf-label">RAM</span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfRamRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfRam">--</span><span class="perf-unit">GB</span></span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfRamLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfRamLoad">--</span><span class="perf-unit">%</span></span>
+                    </div>
+                </div>
+                <div class="perf-downloads" id="perfDownloads" hidden>
+                    <span>Get required dependencies:</span>
+                    <div class="perf-links-row">
+                        <button type="button" class="perf-link" data-dependency="rtss" data-url="https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/">RTSS</button>
+                        <button type="button" class="perf-link" data-dependency="afterburner" data-url="https://www.msi.com/Landing/afterburner/graphics-cards">Afterburner</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Widget Header -->
+            <div class="widget-header">
+                <div class="widget-brand">
+                    <h1>My Game Library</h1>
+                </div>
+                <div class="header-controls">
+                    <button class="header-btn" id="scanGamesBtn">🎮 Scan Games</button>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="search-filter-bar">
+                <input type="text" id="searchInput" placeholder="Search games...">
+                <select id="sortSelect">
+                    <option value="name">Sort by Name</option>
+                    <option value="category">Sort by Category</option>
+                    <option value="group">Sort by Group</option>
+                </select>
+                <select id="coverArtSelect">
+                    <option value="disks">Disks</option>
+                    <option value="icons">Icons</option>
+                </select>
+            </div>
+
+            <!-- Games Grid -->
+            <div class="games-grid" id="gamesGrid">
+                <!-- Games will be dynamically inserted here -->
+            </div>
+
+            <!-- Edit Game Panel -->
+            <div class="settings-panel edit-game-panel" id="editGamePanel" style="display: none;">
+                <form class="edit-game-content" id="editGameForm">
+                    <h2>Edit Game</h2>
+                    <label for="editGameName">Displayed name</label>
+                    <input id="editGameName" name="editGameName" type="text" maxlength="100" required>
+                    <label>Custom wallpaper</label>
+                    <div class="edit-wallpaper-preview" id="editWallpaperPreviewWrap">
+                        <img id="editWallpaperPreview" alt="Wallpaper preview">
+                        <span id="editWallpaperPlaceholder">No custom wallpaper selected</span>
+                    </div>
+                    <button class="btn btn-secondary" id="chooseWallpaperBtn" type="button">Choose Image…</button>
+                    <p class="group-form-status" id="editGameStatus" role="status" aria-live="polite"></p>
+                    <div class="settings-actions">
+                        <button class="btn btn-secondary" id="cancelEditGameBtn" type="button">Cancel</button>
+                        <button class="btn btn-primary" type="submit">Save</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Settings Panel (Hidden by default) -->
+            <div class="settings-panel" id="settingsPanel" style="display: none;">
+                <div class="settings-content">
+                    <h2>Settings</h2>
+                    <div class="settings-section">
+                        <h3>Cover Art Style</h3>
+                        <div class="setting-option">
+                            <input type="radio" id="styleDisks" name="coverStyle" value="disks">
+                            <label for="styleDisks">Disks</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="radio" id="styleIcons" name="coverStyle" value="icons" checked>
+                            <label for="styleIcons">Icons</label>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Game Library Platforms</h3>
+                        <div class="setting-option">
+                            <input type="checkbox" id="steamEnabled" checked>
+                            <label for="steamEnabled">Steam</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="epicEnabled" checked>
+                            <label for="epicEnabled">Epic Games</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="gogEnabled">
+                            <label for="gogEnabled">GOG</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="xboxEnabled">
+                            <label for="xboxEnabled">Xbox / Microsoft Store</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="battlenetEnabled">
+                            <label for="battlenetEnabled">Battle.net</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="ubisoftEnabled">
+                            <label for="ubisoftEnabled">Ubisoft Connect</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="eaEnabled">
+                            <label for="eaEnabled">EA App</label>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>User Groups</h3>
+                        <button class="btn btn-primary" id="addGroupBtn" type="button">+ Add Group</button>
+                        <form class="add-group-form" id="addGroupForm" hidden>
+                            <label for="newGroupName">New group name</label>
+                            <input id="newGroupName" name="newGroupName" type="text" maxlength="40" autocomplete="off" placeholder="e.g. Co-op games">
+                            <div class="add-group-actions">
+                                <button class="btn btn-primary" id="createGroupBtn" type="submit">Create Group</button>
+                                <button class="btn btn-secondary" id="cancelGroupBtn" type="button">Cancel</button>
+                            </div>
+                            <p class="group-form-status" id="groupFormStatus" role="status" aria-live="polite"></p>
+                        </form>
+                        <div id="userGroupsList"></div>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn btn-secondary" id="closeSettingsBtn">Close</button>
+                        <button class="btn btn-primary" id="saveSettingsBtn">Save</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Scanner Panel (Hidden by default) -->
+            <div class="scanner-panel" id="scannerPanel" style="display: none;">
+                <div class="scanner-content">
+                    <h2>Scan for Games</h2>
+                    <div class="scanner-options">
+                        <h3>Select Platforms</h3>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanSteam" checked>
+                            <label for="scanSteam">Steam</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanEpic" checked>
+                            <label for="scanEpic">Epic Games</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanGog">
+                            <label for="scanGog">GOG Galaxy</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanXbox">
+                            <label for="scanXbox">Xbox / Microsoft Store</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanBattlenet">
+                            <label for="scanBattlenet">Battle.net</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanUbisoft">
+                            <label for="scanUbisoft">Ubisoft Connect</label>
+                        </div>
+                        <div class="setting-option">
+                            <input type="checkbox" id="scanEa">
+                            <label for="scanEa">EA App</label>
+                        </div>
+                        <div class="setting-option manual-game-option">
+                            <span>Manually installed games</span>
+                            <button class="btn btn-secondary" id="addManualGameBtn" type="button">Browse…</button>
+                        </div>
+                    </div>
+                    <div class="scanner-actions">
+                        <button class="btn btn-secondary" id="cancelScanBtn">Cancel</button>
+                        <button class="btn btn-primary" id="startScanBtn">Start Scan</button>
+                    </div>
+                    <div class="scan-progress" id="scanProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="scanStatus">Scanning...</p>
+                    </div>
+                    <div class="scan-results" id="scanResults" style="display: none;">
+                        <h3>Found Games</h3>
+                        <p id="scanSummary" class="scan-summary"></p>
+                        <div id="foundGamesList"></div>
+                        <div class="scan-results-actions">
+                            <button class="btn btn-secondary" id="selectAllBtn">Select All</button>
+                            <button class="btn btn-primary" id="addSelectedBtn">Add Selected</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
