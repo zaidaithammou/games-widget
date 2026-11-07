@@ -95,6 +95,9 @@ body {
 .performance-btn svg circle { fill: currentColor; stroke: none; }
 .performance-btn:hover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 
+.settings-btn { font-size: 14px; }
+.settings-btn:hover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+
 /* Widget Header */
 .widget-header {
     padding: 16px 20px;
@@ -240,7 +243,7 @@ select option {
     height: fit-content;
     background: rgba(255, 255, 255, 0.035);
     border-radius: 12px;
-    padding: 12px;
+    padding: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -250,76 +253,38 @@ select option {
     text-align: center;
 }
 
-.game-remove-btn {
-    position: static;
-    flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 50%;
-    background: rgba(17, 22, 34, 0.82);
-    color: #fff;
-    font-size: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    line-height: 1;
-    opacity: 0.82;
-    transition: opacity 0.15s ease, background 0.15s ease;
-}
-
-.game-remove-btn:hover,
-.game-remove-btn:focus-visible { opacity: 1; }
-
-.game-remove-btn:hover { background: #d64050; }
-
-.game-remove-btn span {
-    position: relative;
-    display: block;
-    width: 14px;
-    height: 14px;
-}
-
-.game-remove-btn span::before,
-.game-remove-btn span::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 14px;
-    height: 1.5px;
-    border-radius: 2px;
-    background: #fff;
-}
-
-.game-remove-btn span::before { transform: translate(-50%, -50%) rotate(45deg); }
-.game-remove-btn span::after { transform: translate(-50%, -50%) rotate(-45deg); }
-
 .game-actions {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 9px;
+    gap: 6px;
     width: 100%;
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
-.game-play-btn {
-    min-width: 88px;
-    height: 32px;
-    padding: 0 14px;
+.game-action-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
     color: #fff;
-    font: 600 12px 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1;
     cursor: pointer;
-    transition: filter 0.15s ease, transform 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
 }
 
-.game-play-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.game-action-btn:hover { background: rgba(102, 126, 234, 0.28); transform: translateY(-1px); }
+.game-action-btn.is-primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.game-action-btn.is-danger:hover { background: #d64050; border-color: #d64050; }
 
 .game-card:hover {
     transform: translateY(-4px);
@@ -431,7 +396,7 @@ select option {
     width: 100%;
     aspect-ratio: 1;
     border-radius: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     overflow: hidden;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: flex;
@@ -448,6 +413,8 @@ select option {
 
 /* Disks Style */
 .game-cover.style-disks {
+    width: 76%;
+    margin: 0 auto 6px;
     border-radius: 50%;
     border: 4px solid rgba(196, 207, 224, 0.34);
     padding: 0;
@@ -517,7 +484,7 @@ select option {
 .game-title {
     font-size: 13px;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     color: white;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -527,7 +494,7 @@ select option {
 .game-category {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .game-last-played {
@@ -951,27 +918,60 @@ body.performance .performance-panel:active { cursor: grabbing; }
     min-height: 0;
 }
 
+body.performance.performance-horizontal .performance-panel {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 6px;
+    padding: 4px;
+}
+body.performance.performance-horizontal .perf-header {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+}
+body.performance.performance-horizontal .perf-controls { flex-direction: column; gap: 2px; }
+body.performance.performance-horizontal .perf-menu-btn,
+body.performance.performance-horizontal .perf-min-btn,
+body.performance.performance-horizontal .perf-exit-btn {
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+    line-height: 16px;
+    border-radius: 5px;
+}
+body.performance.performance-horizontal .perf-menu-btn svg { width: 12px; height: 12px; }
 body.performance.performance-horizontal .perf-stats {
+    grid-column: 2;
+    grid-row: 1;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+    gap: 5px;
     align-items: stretch;
+    min-height: 0;
 }
 body.performance.performance-horizontal .perf-stats > * { min-width: 0; }
-body.performance.performance-horizontal .perf-card { padding: 6px 8px; }
-body.performance.performance-horizontal .perf-row { gap: 6px; min-height: 36px; }
-body.performance.performance-horizontal .perf-label { flex: 0 0 30px; font-size: 10px; }
+body.performance.performance-horizontal .perf-card { padding: 4px 6px; }
+body.performance.performance-horizontal .perf-fps-top { gap: 6px; }
+body.performance.performance-horizontal .perf-row { gap: 5px; min-height: 30px; }
 body.performance.performance-horizontal .perf-metric { gap: 4px; }
-body.performance.performance-horizontal .perf-ring { flex: 0 0 16px; width: 16px; height: 16px; }
-body.performance.performance-horizontal .perf-value { font-size: 14px; }
-body.performance.performance-horizontal .perf-unit { margin-left: -3px; font-size: 10px; }
-body.performance.performance-horizontal .perf-fps-value { font-size: 20px; }
-body.performance.performance-horizontal .perf-frametime { font-size: 10px; }
-body.performance.performance-horizontal .perf-graph { height: 14px; margin-top: 2px; }
-body.performance.performance-horizontal .perf-fps-hint { display: none !important; }
-body.performance.performance-horizontal .perf-downloads { flex-direction: row; gap: 8px; }
-body.performance.performance-horizontal .perf-downloads > span { display: none; }
-body.performance.performance-horizontal .perf-links-row { flex-wrap: nowrap; }
+body.performance.performance-horizontal .perf-ring { flex: 0 0 14px; width: 14px; height: 14px; }
+body.performance.performance-horizontal .perf-value { font-size: 12px; }
+body.performance.performance-horizontal .perf-unit { margin-left: -3px; font-size: 9px; }
+body.performance.performance-horizontal .perf-fps-value { font-size: 18px; }
+body.performance.performance-horizontal .perf-graph { height: 10px; margin-top: 1px; }
+body.performance.performance-horizontal .perf-label,
+body.performance.performance-horizontal .perf-frametime,
+body.performance.performance-horizontal .perf-fps-hint,
+body.performance.performance-horizontal .perf-downloads { display: none !important; }
+body.performance.performance-horizontal .perf-status { grid-column: 2; grid-row: 2; justify-self: center; }
 
 .perf-card {
     padding: 8px 12px;
@@ -1020,6 +1020,15 @@ body.performance.performance-horizontal .perf-links-row { flex-wrap: nowrap; }
 .perf-ring-fill[data-tone="idle"] { stroke: transparent; }
 .perf-value { font-size: 18px; font-variant-numeric: tabular-nums; }
 .perf-unit { margin-left: -4px; font-size: 11px; color: rgba(255, 255, 255, 0.75); }
+.perf-status {
+    margin: 0;
+    padding: 2px 4px;
+    font-size: 9px;
+    line-height: 1.2;
+    color: #ffd27d;
+    text-align: center;
+}
+.perf-status[hidden] { display: none; }
 .perf-downloads {
     display: flex;
     flex-direction: column;
@@ -1061,6 +1070,7 @@ body.performance.performance-horizontal .perf-links-row { flex-wrap: nowrap; }
     white-space: nowrap;
     flex-shrink: 0;
 }
+.perf-link[hidden] { display: none; }
 .perf-link:hover { background: rgba(102, 126, 234, 0.25); }
 .perf-link.is-installed,
 .perf-link:disabled {
