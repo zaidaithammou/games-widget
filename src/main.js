@@ -16,8 +16,7 @@ const PERFORMANCE_WINDOW_WIDTH = 260;
 const PERFORMANCE_WINDOW_HEIGHT = 268; // Clean vertical state (no dependency links)
 const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 306; // Vertical state with dependency links
 const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 104; // Clean horizontal state
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 128; // Horizontal state with dependency links
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 72; // Ultra-slim horizontal state
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;
@@ -32,10 +31,15 @@ let dragTimer;
 let saveBoundsTimer;
 let dragOrigin;
 let appliedWindowLimits = '';
+let rtssElevationAttempted = false;
 const artworkLookupCache = new Map();
 const performanceMonitor = createPerformanceMonitor((sample) => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('widget:performance-sample', sample);
 });
+
+function notifyRtssStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('widget:rtss-status', status);
+}
 const settingsPath = () => path.join(app.getPath('userData'), 'widget-settings.json');
 const libraryPath = () => path.join(app.getPath('userData'), 'games-library.json');
 const groupsPath = () => path.join(app.getPath('userData'), 'user-groups.json');
@@ -72,10 +76,7 @@ function getInitialBounds() {
 
 function performanceWindowSize() {
   if (performanceOrientation === 'horizontal') {
-    return {
-      width: PERFORMANCE_HORIZONTAL_WINDOW_WIDTH,
-      height: performanceDependenciesVisible ? PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS : PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT
-    };
+    return { width: PERFORMANCE_HORIZONTAL_WINDOW_WIDTH, height: PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT };
   }
   return {
     width: PERFORMANCE_WINDOW_WIDTH,
@@ -143,31 +144,78 @@ function enforceWindowBounds() {
   }
 }
 
-function ensureRtssRunning() {
-  if (process.platform !== 'win32') return;
-  const rtssPaths = [
+function rtssInstallPaths() {
+  return [
     path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'RivaTuner Statistics Server', 'RTSS.exe'),
     path.join(process.env.ProgramFiles || 'C:\\Program Files', 'RivaTuner Statistics Server', 'RTSS.exe'),
     path.join(process.env.LOCALAPPDATA || '', 'Programs', 'RivaTuner Statistics Server', 'RTSS.exe')
   ];
+}
 
-  // Check if RTSS is already running
+function isRtssRunning() {
   try {
     const result = execFileSync('tasklist', ['/fi', 'imagename eq RTSS.exe', '/fo', 'csv', '/nh'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
-    if (result.includes('RTSS.exe')) return; // Already running
-  } catch { /* tasklist failed, continue to check paths */ }
+    return result.includes('RTSS.exe');
+  } catch { return false; }
+}
 
-  // Try to start RTSS if found
-  for (const rtssPath of rtssPaths) {
-    if (fs.existsSync(rtssPath)) {
-      try {
-        spawn(rtssPath, [], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
-        console.log('Started RTSS for FPS monitoring');
-        return;
-      } catch (error) {
-        console.warn('Could not start RTSS:', error.message);
-      }
+function spawnDetached(command, args = [], options = {}, onError) {
+  try {
+    const child = spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: false, ...options });
+    child.on('error', (error) => {
+      console.warn(`Could not start ${command}:`, error.message);
+      if (onError) onError(error);
+    });
+    child.on('exit', (code) => {
+      if (code) console.warn(`${command} exited with code ${code}`);
+    });
+    child.unref();
+    return child;
+  } catch (error) {
+    console.warn(`Could not start ${command}:`, error.message);
+    if (onError) onError(error);
+    return null;
+  }
+}
+
+function requestRtssElevation(rtssPath) {
+  const escapedPath = rtssPath.replace(/'/g, "''");
+  spawnDetached('powershell.exe', ['-NoProfile', '-Command', `Start-Process -FilePath '${escapedPath}' -Verb RunAs`], { windowsHide: true });
+}
+
+function ensureRtssRunning() {
+  if (process.platform !== 'win32') return;
+  if (isRtssRunning()) {
+    notifyRtssStatus({ state: 'ok' });
+    return;
+  }
+  const rtssPath = rtssInstallPaths().find((candidate) => fs.existsSync(candidate));
+  if (!rtssPath) {
+    notifyRtssStatus({ state: 'missing', message: 'RTSS is not installed.' });
+    return;
+  }
+  const child = spawnDetached(rtssPath, [], { windowsHide: false }, (error) => {
+    const needsAdmin = error && (error.code === 'EACCES' || /EACCES|permission denied/i.test(String(error.message)));
+    if (needsAdmin && !rtssElevationAttempted) {
+      rtssElevationAttempted = true;
+      notifyRtssStatus({ state: 'error', message: 'RTSS needs administrator permission; requesting elevation…' });
+      requestRtssElevation(rtssPath);
+      return;
     }
+    notifyRtssStatus({
+      state: 'error',
+      message: needsAdmin ? 'RTSS needs administrator permission to start.' : 'Could not start RTSS.'
+    });
+  });
+  if (child) {
+    notifyRtssStatus({ state: 'starting', message: 'Starting RTSS…' });
+    console.log('Started RTSS for FPS monitoring');
+    setTimeout(() => {
+      if (windowMode !== 'performance') return;
+      notifyRtssStatus(isRtssRunning()
+        ? { state: 'ok' }
+        : { state: 'error', message: 'RTSS did not start.' });
+    }, 5000);
   }
 }
 
@@ -195,7 +243,10 @@ function setWindowMode(nextMode) {
   if (nextMode === 'performance' && mainWindow.isVisible()) {
     ensureRtssRunning();
     performanceMonitor.start();
-  } else performanceMonitor.stop();
+  } else {
+    performanceMonitor.stop();
+    notifyRtssStatus({ state: 'ok' });
+  }
   mainWindow.webContents.send('widget:compact-state', nextMode === 'compact');
   mainWindow.webContents.send('widget:mode', nextMode);
 }
@@ -1002,8 +1053,8 @@ app.whenReady().then(() => {
       }
       const xboxAumid = `${game.xboxPackageFamilyName || ''}!${game.xboxAppId || ''}`;
       if (game.platform === 'Xbox' && XBOX_AUMID.test(xboxAumid)) {
-        spawn('explorer.exe', [`shell:AppsFolder\\${xboxAumid}`], { detached: true, stdio: 'ignore' }).unref();
-        return { ok: true };
+        const launched = spawnDetached('explorer.exe', [`shell:AppsFolder\\${xboxAumid}`], { windowsHide: true });
+        return launched ? { ok: true } : { ok: false, error: `Could not launch ${game.name}.` };
       }
       if (game.platform === 'Ubisoft Connect' && /^\d+$/.test(String(game.ubisoftId || ''))) {
         await shell.openExternal(`uplay://launch/${game.ubisoftId}/0`);
@@ -1011,8 +1062,8 @@ app.whenReady().then(() => {
       }
       const battleNet = game.platform === 'Battle.net' && /^[\w]+$/.test(String(game.battleNetProductCode || '')) ? battleNetLauncher() : null;
       if (battleNet) {
-        spawn(battleNet, [`--exec=launch ${game.battleNetProductCode}`], { detached: true, stdio: 'ignore' }).unref();
-        return { ok: true };
+        const launched = spawnDetached(battleNet, [`--exec=launch ${game.battleNetProductCode}`], { windowsHide: false });
+        return launched ? { ok: true } : { ok: false, error: `Could not launch ${game.name}.` };
       }
       const root = typeof game.installPath === 'string' ? path.resolve(game.installPath) : '';
       let executablePath = typeof game.executablePath === 'string' ? path.resolve(game.executablePath) : '';
@@ -1021,9 +1072,8 @@ app.whenReady().then(() => {
         executablePath = root ? findGameExecutable(root, game.name) : null;
       }
       if (!executablePath || !fs.existsSync(executablePath)) return { ok: false, error: `Could not find the game executable for ${game.name}.` };
-      const child = spawn(executablePath, [], { cwd: path.dirname(executablePath), detached: true, stdio: 'ignore', windowsHide: false });
-      child.unref();
-      return { ok: true };
+      const child = spawnDetached(executablePath, [], { cwd: path.dirname(executablePath), windowsHide: false });
+      return child ? { ok: true } : { ok: false, error: `Could not start ${game.name}.` };
     } catch (error) { return { ok: false, error: error.message || 'Could not start the game.' }; }
   });
   ipcMain.handle('games:choose-wallpaper', async (_event, gameId) => {

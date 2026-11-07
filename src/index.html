@@ -16,6 +16,7 @@
             <div class="window-controls">
                 <img class="window-menu-icon" src="../assets/icon.png" alt="Games Widget">
                 <div class="window-control-buttons">
+                    <button class="control-btn settings-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙️</button>
                     <button class="control-btn performance-btn" id="performanceBtn" title="Performance mode" aria-label="Performance mode">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4.5-6"/><circle cx="12" cy="18" r="1.4"/></svg>
                     </button>
@@ -35,6 +36,7 @@
                         <button class="perf-exit-btn" id="performanceExitBtn" type="button" title="Back to game library" aria-label="Back to game library">×</button>
                     </div>
                 </div>
+                <p class="perf-status" id="perfStatus" hidden></p>
                 <div class="perf-stats">
                     <div class="perf-card perf-fps-card">
                         <div class="perf-fps-top">
@@ -77,7 +79,6 @@
                 </div>
                 <div class="header-controls">
                     <button class="header-btn" id="scanGamesBtn">🎮 Scan Games</button>
-                    <button class="header-btn" id="settingsBtn">⚙️</button>
                 </div>
             </div>
 

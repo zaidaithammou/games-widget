@@ -189,6 +189,7 @@ function setupEventListeners() {
         document.body.classList.toggle('performance', performance);
     });
     window.gamesWidget.onPerformanceSample(updatePerformancePanel);
+    window.gamesWidget.onRtssStatus(updateRtssStatus);
 
     let suppressCompactClick = false;
     function makeDraggable(handle, canStart) {
@@ -435,19 +436,6 @@ function createGameCard(game) {
     const cover = document.createElement('div');
     cover.className = `game-cover style-${coverArtStyle}`;
 
-    const removeButton = document.createElement('button');
-    removeButton.className = 'game-remove-btn';
-    removeButton.type = 'button';
-    const removeGlyph = document.createElement('span');
-    removeGlyph.textContent = '×';
-    removeButton.appendChild(removeGlyph);
-    removeButton.title = `Remove ${getDisplayName(game)}`;
-    removeButton.setAttribute('aria-label', `Remove ${getDisplayName(game)} from library`);
-    removeButton.addEventListener('click', (event) => {
-        event.stopPropagation();
-        removeGame(game);
-    });
-
     const imageSource = game.customWallpaper || (coverArtStyle === 'icons'
         ? (game.landscapeImage || game.coverImage)
         : coverArtStyle === 'disks'
@@ -527,17 +515,26 @@ function createGameCard(game) {
 
     const actions = document.createElement('div');
     actions.className = 'game-actions';
-    const playButton = document.createElement('button');
-    playButton.className = 'game-play-btn';
-    playButton.type = 'button';
-    playButton.textContent = '▶ Play';
-    playButton.setAttribute('aria-label', `Play ${getDisplayName(game)}`);
-    playButton.addEventListener('click', (event) => {
-        event.stopPropagation();
-        launchGame(game);
-    });
-    actions.appendChild(playButton);
-    actions.appendChild(removeButton);
+    const displayName = getDisplayName(game);
+    const actionDefinitions = [
+        { className: 'game-action-btn is-primary', text: '▶', title: `Play ${displayName}`, action: () => launchGame(game) },
+        { className: 'game-action-btn', text: '✎', title: `Edit ${displayName}`, action: () => editGame(game) },
+        { className: 'game-action-btn', text: '⇄', title: `Move ${displayName} to group`, action: (event) => showGameGroupMenu(event.pageX || event.clientX, event.pageY || event.clientY, game) },
+        { className: 'game-action-btn is-danger', text: '×', title: `Remove ${displayName}`, action: () => removeGame(game) }
+    ];
+    for (const definition of actionDefinitions) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = definition.className;
+        button.textContent = definition.text;
+        button.title = definition.title;
+        button.setAttribute('aria-label', definition.title);
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            definition.action(event);
+        });
+        actions.appendChild(button);
+    }
 
     card.appendChild(cover);
     card.appendChild(info);
@@ -546,12 +543,6 @@ function createGameCard(game) {
     // Click to launch game (placeholder)
     card.addEventListener('click', () => {
         launchGame(game);
-    });
-
-    // Right-click for context menu
-    card.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        showGameContextMenu(e, game);
     });
 
     return card;
@@ -588,64 +579,6 @@ async function launchGame(game) {
     } catch (error) {
         alert(`Could not start ${displayName}: ${error.message}`);
     }
-}
-
-// Show Game Context Menu
-function showGameContextMenu(event, game) {
-    const menu = document.createElement('div');
-    menu.className = 'context-menu';
-    menu.style.position = 'absolute';
-    menu.style.left = event.pageX + 'px';
-    menu.style.top = event.pageY + 'px';
-    menu.style.background = 'rgba(30, 30, 40, 0.95)';
-    menu.style.borderRadius = '8px';
-    menu.style.padding = '8px 0';
-    menu.style.minWidth = '150px';
-    menu.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
-    menu.style.zIndex = '1000';
-
-    const options = [
-        { text: 'Launch', action: () => launchGame(game) },
-        { text: 'Edit', action: () => editGame(game) },
-        { text: 'Move to Group…', action: () => showGameGroupMenu(event.pageX, event.pageY, game) },
-        { text: 'Remove', action: () => removeGame(game) }
-    ];
-
-    options.forEach(option => {
-        const item = document.createElement('div');
-        item.className = 'context-menu-item';
-        item.textContent = option.text;
-        item.style.padding = '8px 16px';
-        item.style.cursor = 'pointer';
-        item.style.transition = 'background 0.2s';
-
-        item.addEventListener('mouseenter', () => {
-            item.style.background = 'rgba(102, 126, 234, 0.3)';
-        });
-
-        item.addEventListener('mouseleave', () => {
-            item.style.background = 'transparent';
-        });
-
-        item.addEventListener('click', () => {
-            document.body.removeChild(menu);
-            option.action();
-        });
-
-        menu.appendChild(item);
-    });
-
-    document.body.appendChild(menu);
-
-    // Close menu when clicking elsewhere
-    setTimeout(() => {
-        document.addEventListener('click', function closeMenu(e) {
-            if (!menu.contains(e.target)) {
-                document.body.removeChild(menu);
-                document.removeEventListener('click', closeMenu);
-            }
-        });
-    }, 0);
 }
 
 function showGameGroupMenu(x, y, game) {
@@ -1136,7 +1069,7 @@ const performanceHistory = { fps: [], cpu: [] };
 const PERFORMANCE_HISTORY_LENGTH = 40;
 let performanceOrientation = 'vertical';
 let performanceDependenciesVisible = false;
-let performanceDependenciesInstalled = { rtss: false, afterburner: false };
+let performanceDependenciesInstalled = { rtss: null, afterburner: null };
 let lastPerformanceLayoutKey = '';
 
 function syncPerformanceLayout() {
@@ -1160,16 +1093,28 @@ function setPerformanceOrientation(orientation) {
     performanceLayoutBtn.title = label;
     performanceLayoutBtn.setAttribute('aria-label', label);
     performanceLayoutBtn.setAttribute('aria-pressed', String(horizontal));
+    if (horizontal) {
+        performanceDependenciesVisible = false;
+        document.getElementById('perfDownloads').hidden = true;
+    }
     syncPerformanceLayout();
+}
+
+function updateRtssStatus(status) {
+    const element = document.getElementById('perfStatus');
+    if (!element) return;
+    if (!status || status.state === 'ok') {
+        element.hidden = true;
+        element.textContent = '';
+        return;
+    }
+    element.textContent = status.message || 'RTSS status unavailable';
+    element.hidden = false;
 }
 
 function updateDependencyButtons() {
     document.querySelectorAll('.perf-link[data-dependency]').forEach((link) => {
-        const installed = performanceDependenciesInstalled[link.dataset.dependency] === true;
-        link.disabled = installed;
-        link.classList.toggle('is-installed', installed);
-        link.title = installed ? 'Installed' : 'Open download page';
-        link.setAttribute('aria-disabled', String(installed));
+        link.hidden = performanceDependenciesInstalled[link.dataset.dependency] !== false;
     });
 }
 
@@ -1193,7 +1138,7 @@ function setPerformanceMetric(id, value, ringPercent, tone, digits = 0) {
 function resetPerformancePanel() {
     performanceHistory.fps = [];
     performanceHistory.cpu = [];
-    performanceDependenciesInstalled = { rtss: false, afterburner: false };
+    performanceDependenciesInstalled = { rtss: null, afterburner: null };
     updatePerformancePanel({});
 }
 
@@ -1224,11 +1169,6 @@ function updatePerformancePanel(sample = {}) {
         ? history.map((value, index) => `${((offset + index) * step).toFixed(2)},${(22 - (value / max) * 20).toFixed(2)}`).join(' ')
         : '0,22 100,22');
 
-    const missingFps = !hasFps && sample.ramTotalGb;
-    const missingTemps = !Number.isFinite(sample.cpuTemp) && !Number.isFinite(sample.gpuTemp) && sample.ramTotalGb;
-    const showDependencies = Boolean(missingFps || missingTemps);
-    performanceDependenciesVisible = showDependencies;
-    document.getElementById('perfDownloads').hidden = !showDependencies;
     const detectedDependencies = sample.dependencies;
     if (detectedDependencies && typeof detectedDependencies === 'object') {
         performanceDependenciesInstalled = {
@@ -1236,11 +1176,17 @@ function updatePerformancePanel(sample = {}) {
             afterburner: detectedDependencies.afterburner === true
         };
     }
+    const dependenciesKnown = performanceDependenciesInstalled.rtss !== null && performanceDependenciesInstalled.afterburner !== null;
+    const showDependencies = performanceOrientation !== 'horizontal'
+        && dependenciesKnown
+        && (performanceDependenciesInstalled.rtss === false || performanceDependenciesInstalled.afterburner === false);
+    performanceDependenciesVisible = showDependencies;
+    document.getElementById('perfDownloads').hidden = !showDependencies;
     updateDependencyButtons();
     syncPerformanceLayout();
     document.querySelectorAll('.perf-link').forEach((link) => {
         link.onclick = () => {
-            if (!link.disabled) window.gamesWidget.openExternal(link.dataset.url);
+            if (!link.hidden) window.gamesWidget.openExternal(link.dataset.url);
         };
     });
 }
