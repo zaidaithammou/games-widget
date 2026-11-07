@@ -27,34 +27,39 @@
             <!-- Performance Mode -->
             <section class="performance-panel" id="performancePanel" aria-label="Performance monitor">
                 <div class="perf-header">
+                    <button class="perf-menu-btn" id="performanceLayoutBtn" type="button" title="Switch to horizontal layout" aria-label="Switch to horizontal layout" aria-pressed="false">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                    </button>
                     <div class="perf-controls">
                         <button class="perf-min-btn" id="performanceMinBtn" type="button" title="Minimize" aria-label="Minimize">−</button>
                         <button class="perf-exit-btn" id="performanceExitBtn" type="button" title="Back to game library" aria-label="Back to game library">×</button>
                     </div>
                 </div>
-                <div class="perf-card perf-fps-card">
-                    <div class="perf-fps-top">
-                        <span class="perf-label">FPS</span>
-                        <span class="perf-fps-value" id="perfFps">--</span>
-                        <span class="perf-frametime" id="perfFrameTime">-- ms</span>
+                <div class="perf-stats">
+                    <div class="perf-card perf-fps-card">
+                        <div class="perf-fps-top">
+                            <span class="perf-label">FPS</span>
+                            <span class="perf-fps-value" id="perfFps">--</span>
+                            <span class="perf-frametime" id="perfFrameTime">-- ms</span>
+                        </div>
+                        <svg class="perf-graph" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline id="perfGraph" points="0,23 100,23"/></svg>
+                        <p class="perf-fps-hint" id="perfFpsHint">Launch a game for FPS counter</p>
                     </div>
-                    <svg class="perf-graph" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline id="perfGraph" points="0,23 100,23"/></svg>
-                    <p class="perf-fps-hint" id="perfFpsHint">Launch a game for FPS counter</p>
-                </div>
-                <div class="perf-card perf-row">
-                    <span class="perf-label">CPU</span>
-                    <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfCpuTempRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfCpuTemp">--</span><span class="perf-unit">°C</span></span>
-                    <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfCpuLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfCpuLoad">--</span><span class="perf-unit">%</span></span>
-                </div>
-                <div class="perf-card perf-row">
-                    <span class="perf-label">GPU</span>
-                    <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfGpuTempRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfGpuTemp">--</span><span class="perf-unit">°C</span></span>
-                    <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfGpuLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfGpuLoad">--</span><span class="perf-unit">%</span></span>
-                </div>
-                <div class="perf-card perf-row">
-                    <span class="perf-label">RAM</span>
-                    <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfRamRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfRam">--</span><span class="perf-unit">GB</span></span>
-                    <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfRamLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfRamLoad">--</span><span class="perf-unit">%</span></span>
+                    <div class="perf-card perf-row">
+                        <span class="perf-label">CPU</span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfCpuTempRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfCpuTemp">--</span><span class="perf-unit">°C</span></span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfCpuLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfCpuLoad">--</span><span class="perf-unit">%</span></span>
+                    </div>
+                    <div class="perf-card perf-row">
+                        <span class="perf-label">GPU</span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfGpuTempRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfGpuTemp">--</span><span class="perf-unit">°C</span></span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfGpuLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfGpuLoad">--</span><span class="perf-unit">%</span></span>
+                    </div>
+                    <div class="perf-card perf-row">
+                        <span class="perf-label">RAM</span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfRamRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfRam">--</span><span class="perf-unit">GB</span></span>
+                        <span class="perf-metric"><svg class="perf-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="perf-ring-track" cx="10" cy="10" r="7"/><circle class="perf-ring-fill" id="perfRamLoadRing" cx="10" cy="10" r="7" pathLength="100"/></svg><span class="perf-value" id="perfRamLoad">--</span><span class="perf-unit">%</span></span>
+                    </div>
                 </div>
                 <p class="perf-source" id="perfSource"></p>
                 <div class="perf-downloads" id="perfDownloads" hidden>
