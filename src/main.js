@@ -32,6 +32,7 @@ let saveBoundsTimer;
 let dragOrigin;
 let appliedWindowLimits = '';
 let rtssElevationAttempted = false;
+let afterburnerElevationAttempted = false;
 const artworkLookupCache = new Map();
 const performanceMonitor = createPerformanceMonitor((sample) => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('widget:performance-sample', sample);
@@ -219,9 +220,20 @@ function spawnDetached(command, args = [], options = {}, onError) {
   }
 }
 
-function requestRtssElevation(rtssPath) {
-  const escapedPath = rtssPath.replace(/'/g, "''");
+function requestElevation(exePath) {
+  const escapedPath = exePath.replace(/'/g, "''");
   spawnDetached('powershell.exe', ['-NoProfile', '-Command', `Start-Process -FilePath '${escapedPath}' -Verb RunAs`], { windowsHide: true });
+}
+
+function launchTool(exePath, label, onSpawnError) {
+  shell.openPath(exePath).then((error) => {
+    if (!error) return;
+    console.warn(`Could not open ${label}:`, error);
+    spawnDetached(exePath, [], { windowsHide: false }, onSpawnError);
+  }).catch((error) => {
+    console.warn(`Could not open ${label}:`, error.message || error);
+    spawnDetached(exePath, [], { windowsHide: false }, onSpawnError);
+  });
 }
 
 function scheduleRtssVerification(attempt = 0) {
@@ -254,7 +266,7 @@ function ensureRtssRunning() {
     notifyRtssStatus({ state: 'missing', message: 'Telemetry offline: RTSS is not installed.' });
     return;
   }
-  const child = spawnDetached(rtssPath, [], { windowsHide: false }, (error) => {
+  launchTool(rtssPath, 'RTSS', (error) => {
     if (isRtssRunning()) {
       rtssElevationAttempted = false;
       notifyRtssStatus({ state: 'ok' });
@@ -264,7 +276,7 @@ function ensureRtssRunning() {
     if (needsAdmin && !rtssElevationAttempted) {
       rtssElevationAttempted = true;
       notifyRtssStatus({ state: 'error', message: 'Telemetry needs admin; requesting RTSS elevation…' });
-      requestRtssElevation(rtssPath);
+      requestElevation(rtssPath);
       return;
     }
     notifyRtssStatus({
@@ -272,11 +284,91 @@ function ensureRtssRunning() {
       message: needsAdmin ? 'Telemetry offline: RTSS needs administrator permission.' : 'Telemetry offline: could not start RTSS.'
     });
   });
-  if (child) {
-    notifyRtssStatus({ state: 'starting', message: 'Starting RTSS…' });
-    console.log('Started RTSS for FPS monitoring');
-    scheduleRtssVerification();
+  notifyRtssStatus({ state: 'starting', message: 'Launching RTSS in background…' });
+  console.log('Launching RTSS for FPS monitoring');
+  scheduleRtssVerification();
+}
+
+function afterburnerInstallPaths() {
+  return [
+    path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'MSI Afterburner', 'MSIAfterburner.exe'),
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'MSI Afterburner', 'MSIAfterburner.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'MSI Afterburner', 'MSIAfterburner.exe')
+  ];
+}
+
+function afterburnerPathFromRegistryValue(value) {
+  const cleaned = String(value || '').trim().replace(/^"|"$/g, '');
+  if (!cleaned) return null;
+  const exeMatch = cleaned.match(/([A-Za-z]:\\[^,"]*MSIAfterburner\.exe)/i);
+  if (exeMatch && fs.existsSync(exeMatch[1])) return exeMatch[1];
+  const directory = existingDirectory(cleaned);
+  if (directory) {
+    const exe = path.join(directory, 'MSIAfterburner.exe');
+    if (fs.existsSync(exe)) return exe;
   }
+  return null;
+}
+
+function findAfterburnerExecutable() {
+  const direct = afterburnerInstallPaths().find((candidate) => fs.existsSync(candidate));
+  if (direct) return direct;
+  for (const entry of uninstallEntries()) {
+    if (!/afterburner/i.test(entry.values.displayname || '')) continue;
+    for (const key of ['installlocation', 'displayicon', 'uninstallstring']) {
+      const found = afterburnerPathFromRegistryValue(entry.values[key]);
+      if (found) return found;
+    }
+  }
+  try {
+    const where = execFileSync('where.exe', ['MSIAfterburner.exe'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+    for (const line of where.split(/\r?\n/)) {
+      const candidate = line.trim();
+      if (candidate && fs.existsSync(candidate)) return candidate;
+    }
+  } catch { /* PATH lookup unavailable. */ }
+  try {
+    const source = runPowerShell("Get-Command MSIAfterburner.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source", 5000).trim();
+    if (source && fs.existsSync(source)) return source;
+  } catch { /* Command lookup unavailable. */ }
+  return null;
+}
+
+function isAfterburnerRunning() {
+  try {
+    const result = execFileSync('tasklist', ['/fi', 'imagename eq MSIAfterburner.exe', '/fo', 'csv', '/nh'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+    if (result.includes('MSIAfterburner.exe')) return true;
+  } catch { /* Fall back to PowerShell process lookup. */ }
+  try {
+    const processName = runPowerShell('Get-Process -Name MSIAfterburner -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty ProcessName', 5000).trim();
+    return Boolean(processName);
+  } catch { return false; }
+}
+
+function ensureAfterburnerRunning() {
+  if (process.platform !== 'win32') return;
+  if (isAfterburnerRunning()) return;
+  const exePath = findAfterburnerExecutable();
+  if (!exePath) {
+    console.warn('MSI Afterburner was not found for telemetry.');
+    return;
+  }
+  launchTool(exePath, 'MSI Afterburner', (error) => {
+    if (isAfterburnerRunning()) return;
+    const needsAdmin = error && (error.code === 'EACCES' || /EACCES|permission denied/i.test(String(error.message)));
+    if (needsAdmin && !afterburnerElevationAttempted) {
+      afterburnerElevationAttempted = true;
+      requestElevation(exePath);
+      return;
+    }
+    console.warn('Could not start MSI Afterburner:', error.message);
+  });
+  console.log('Launching MSI Afterburner for telemetry');
+}
+
+function ensureMonitoringToolsRunning() {
+  ensureRtssRunning();
+  ensureAfterburnerRunning();
 }
 
 function setWindowMode(nextMode) {
@@ -301,7 +393,7 @@ function setWindowMode(nextMode) {
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   if (nextMode === 'performance' && mainWindow.isVisible()) {
-    ensureRtssRunning();
+    ensureMonitoringToolsRunning();
     performanceMonitor.start();
   } else {
     performanceMonitor.stop();
