@@ -1136,6 +1136,7 @@ const performanceHistory = { fps: [], cpu: [] };
 const PERFORMANCE_HISTORY_LENGTH = 40;
 let performanceOrientation = 'vertical';
 let performanceDependenciesVisible = false;
+let performanceDependenciesInstalled = { rtss: false, afterburner: false };
 let lastPerformanceLayoutKey = '';
 
 function syncPerformanceLayout() {
@@ -1162,6 +1163,16 @@ function setPerformanceOrientation(orientation) {
     syncPerformanceLayout();
 }
 
+function updateDependencyButtons() {
+    document.querySelectorAll('.perf-link[data-dependency]').forEach((link) => {
+        const installed = performanceDependenciesInstalled[link.dataset.dependency] === true;
+        link.disabled = installed;
+        link.classList.toggle('is-installed', installed);
+        link.title = installed ? 'Installed' : 'Open download page';
+        link.setAttribute('aria-disabled', String(installed));
+    });
+}
+
 function formatMetric(value, digits = 0) {
     return Number.isFinite(value) ? value.toFixed(digits) : '--';
 }
@@ -1182,6 +1193,7 @@ function setPerformanceMetric(id, value, ringPercent, tone, digits = 0) {
 function resetPerformancePanel() {
     performanceHistory.fps = [];
     performanceHistory.cpu = [];
+    performanceDependenciesInstalled = { rtss: false, afterburner: false };
     updatePerformancePanel({});
 }
 
@@ -1217,9 +1229,19 @@ function updatePerformancePanel(sample = {}) {
     const showDependencies = Boolean(missingFps || missingTemps);
     performanceDependenciesVisible = showDependencies;
     document.getElementById('perfDownloads').hidden = !showDependencies;
+    const detectedDependencies = sample.dependencies;
+    if (detectedDependencies && typeof detectedDependencies === 'object') {
+        performanceDependenciesInstalled = {
+            rtss: detectedDependencies.rtss === true,
+            afterburner: detectedDependencies.afterburner === true
+        };
+    }
+    updateDependencyButtons();
     syncPerformanceLayout();
     document.querySelectorAll('.perf-link').forEach((link) => {
-        link.onclick = () => window.gamesWidget.openExternal(link.dataset.url);
+        link.onclick = () => {
+            if (!link.disabled) window.gamesWidget.openExternal(link.dataset.url);
+        };
     });
 }
 

@@ -17,7 +17,7 @@ const PERFORMANCE_WINDOW_HEIGHT = 268; // Clean vertical state (no dependency li
 const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 306; // Vertical state with dependency links
 const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
 const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 104; // Clean horizontal state
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 132; // Horizontal state with dependency links
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 128; // Horizontal state with dependency links
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;
