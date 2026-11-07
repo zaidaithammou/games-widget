@@ -13,8 +13,8 @@ const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
 const PERFORMANCE_WINDOW_WIDTH = 260;
-const PERFORMANCE_WINDOW_HEIGHT = 312; // Clean vertical state (no dependency links)
-const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 352; // Vertical state with dependency links
+const PERFORMANCE_WINDOW_HEIGHT = 304; // Clean vertical state (no dependency links)
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 344; // Vertical state with dependency links
 const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
 const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 72; // Ultra-slim horizontal state
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
@@ -152,6 +152,43 @@ function rtssInstallPaths() {
   ];
 }
 
+function rtssPathFromRegistryValue(value) {
+  const cleaned = String(value || '').trim().replace(/^"|"$/g, '');
+  if (!cleaned) return null;
+  const exeMatch = cleaned.match(/([A-Za-z]:\\[^,"]*RTSS\.exe)/i);
+  if (exeMatch && fs.existsSync(exeMatch[1])) return exeMatch[1];
+  const directory = existingDirectory(cleaned);
+  if (directory) {
+    const exe = path.join(directory, 'RTSS.exe');
+    if (fs.existsSync(exe)) return exe;
+  }
+  return null;
+}
+
+function findRtssExecutable() {
+  const direct = rtssInstallPaths().find((candidate) => fs.existsSync(candidate));
+  if (direct) return direct;
+  for (const entry of uninstallEntries()) {
+    if (!/rivatuner|rtss/i.test(entry.values.displayname || '')) continue;
+    for (const key of ['installlocation', 'displayicon', 'uninstallstring']) {
+      const found = rtssPathFromRegistryValue(entry.values[key]);
+      if (found) return found;
+    }
+  }
+  try {
+    const where = execFileSync('where.exe', ['RTSS.exe'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+    for (const line of where.split(/\r?\n/)) {
+      const candidate = line.trim();
+      if (candidate && fs.existsSync(candidate)) return candidate;
+    }
+  } catch { /* PATH lookup unavailable. */ }
+  try {
+    const source = runPowerShell("Get-Command RTSS.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source", 5000).trim();
+    if (source && fs.existsSync(source)) return source;
+  } catch { /* Command lookup unavailable. */ }
+  return null;
+}
+
 function isRtssRunning() {
   try {
     const result = execFileSync('tasklist', ['/fi', 'imagename eq RTSS.exe', '/fo', 'csv', '/nh'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
@@ -187,19 +224,39 @@ function requestRtssElevation(rtssPath) {
   spawnDetached('powershell.exe', ['-NoProfile', '-Command', `Start-Process -FilePath '${escapedPath}' -Verb RunAs`], { windowsHide: true });
 }
 
+function scheduleRtssVerification(attempt = 0) {
+  if (windowMode !== 'performance') return;
+  setTimeout(() => {
+    if (windowMode !== 'performance') return;
+    if (isRtssRunning()) {
+      rtssElevationAttempted = false;
+      notifyRtssStatus({ state: 'ok' });
+      return;
+    }
+    if (attempt < 5) {
+      notifyRtssStatus({ state: 'starting', message: 'Waiting for RTSS…' });
+      scheduleRtssVerification(attempt + 1);
+      return;
+    }
+    notifyRtssStatus({ state: 'error', message: 'Telemetry offline: RTSS did not start.' });
+  }, 5000);
+}
+
 function ensureRtssRunning() {
   if (process.platform !== 'win32') return;
   if (isRtssRunning()) {
+    rtssElevationAttempted = false;
     notifyRtssStatus({ state: 'ok' });
     return;
   }
-  const rtssPath = rtssInstallPaths().find((candidate) => fs.existsSync(candidate));
+  const rtssPath = findRtssExecutable();
   if (!rtssPath) {
     notifyRtssStatus({ state: 'missing', message: 'Telemetry offline: RTSS is not installed.' });
     return;
   }
   const child = spawnDetached(rtssPath, [], { windowsHide: false }, (error) => {
     if (isRtssRunning()) {
+      rtssElevationAttempted = false;
       notifyRtssStatus({ state: 'ok' });
       return;
     }
@@ -218,12 +275,7 @@ function ensureRtssRunning() {
   if (child) {
     notifyRtssStatus({ state: 'starting', message: 'Starting RTSS…' });
     console.log('Started RTSS for FPS monitoring');
-    setTimeout(() => {
-      if (windowMode !== 'performance') return;
-      notifyRtssStatus(isRtssRunning()
-        ? { state: 'ok' }
-        : { state: 'error', message: 'Telemetry offline: RTSS did not start.' });
-    }, 5000);
+    scheduleRtssVerification();
   }
 }
 
