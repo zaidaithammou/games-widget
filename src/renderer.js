@@ -22,6 +22,7 @@ const closeBtn = document.getElementById('closeBtn');
 const compactRestoreBtn = document.getElementById('compactRestoreBtn');
 const performanceBtn = document.getElementById('performanceBtn');
 const performancePanel = document.getElementById('performancePanel');
+const performanceLayoutBtn = document.getElementById('performanceLayoutBtn');
 const LAUNCHER_GROUPS = ['Steam', 'Epic Games', 'GOG', 'Xbox', 'Battle.net', 'Ubisoft Connect', 'EA App', 'Manual'];
 const LAUNCH_FIELDS = ['epicAppName', 'epicCatalogNamespace', 'epicCatalogItemId', 'xboxPackageFamilyName', 'xboxAppId', 'ubisoftId', 'battleNetProductCode'];
 
@@ -179,6 +180,9 @@ function setupEventListeners() {
     performanceBtn.addEventListener('click', () => window.gamesWidget.togglePerformanceMode());
     document.getElementById('performanceExitBtn').addEventListener('click', () => window.gamesWidget.togglePerformanceMode());
     document.getElementById('performanceMinBtn').addEventListener('click', () => window.gamesWidget.minimize());
+    performanceLayoutBtn.addEventListener('click', () => {
+        setPerformanceOrientation(performanceOrientation === 'vertical' ? 'horizontal' : 'vertical');
+    });
     window.gamesWidget.onWindowMode((mode) => {
         const performance = mode === 'performance';
         if (performance && !document.body.classList.contains('performance')) resetPerformancePanel();
@@ -1130,6 +1134,33 @@ function resetScanner() {
 // Performance Mode
 const performanceHistory = { fps: [], cpu: [] };
 const PERFORMANCE_HISTORY_LENGTH = 40;
+let performanceOrientation = 'vertical';
+let performanceDependenciesVisible = false;
+let lastPerformanceLayoutKey = '';
+
+function syncPerformanceLayout() {
+    const key = `${performanceOrientation}:${performanceDependenciesVisible}`;
+    if (key === lastPerformanceLayoutKey) return;
+    lastPerformanceLayoutKey = key;
+    window.gamesWidget.setPerformanceLayout({
+        orientation: performanceOrientation,
+        showDependencies: performanceDependenciesVisible
+    });
+}
+
+function setPerformanceOrientation(orientation) {
+    const nextOrientation = orientation === 'horizontal' ? 'horizontal' : 'vertical';
+    if (nextOrientation === performanceOrientation) return;
+    performanceOrientation = nextOrientation;
+    const horizontal = performanceOrientation === 'horizontal';
+    document.body.classList.toggle('performance-horizontal', horizontal);
+    performanceLayoutBtn.classList.toggle('is-horizontal', horizontal);
+    const label = horizontal ? 'Switch to vertical layout' : 'Switch to horizontal layout';
+    performanceLayoutBtn.title = label;
+    performanceLayoutBtn.setAttribute('aria-label', label);
+    performanceLayoutBtn.setAttribute('aria-pressed', String(horizontal));
+    syncPerformanceLayout();
+}
 
 function formatMetric(value, digits = 0) {
     return Number.isFinite(value) ? value.toFixed(digits) : '--';
@@ -1191,8 +1222,10 @@ function updatePerformancePanel(sample = {}) {
     const source = document.getElementById('perfSource');
     source.textContent = notes.join(' · ');
     source.title = 'FPS comes from RivaTuner Statistics Server (RTSS). Temperatures come from MSI Afterburner or LibreHardwareMonitor when they are running.';
-    document.getElementById('perfDownloads').hidden = !(missingFps || missingTemps);
-    window.gamesWidget.setPerformanceHeight(missingFps || missingTemps ? 'with-links' : 'clean');
+    const showDependencies = Boolean(missingFps || missingTemps);
+    performanceDependenciesVisible = showDependencies;
+    document.getElementById('perfDownloads').hidden = !showDependencies;
+    syncPerformanceLayout();
     document.querySelectorAll('.perf-link').forEach((link) => {
         link.onclick = () => window.gamesWidget.openExternal(link.dataset.url);
     });

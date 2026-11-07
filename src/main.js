@@ -12,15 +12,20 @@ const MIN_WINDOW_HEIGHT = 460;
 const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
-const PERFORMANCE_WINDOW_WIDTH = 236;
-const PERFORMANCE_WINDOW_HEIGHT = 270; // Clean state (no dependency links)
-const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 320; // When dependency links shown
+const PERFORMANCE_WINDOW_WIDTH = 260;
+const PERFORMANCE_WINDOW_HEIGHT = 290; // Clean vertical state (no dependency links)
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 340; // Vertical state with dependency links
+const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 620;
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 180; // Clean horizontal state
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS = 210; // Horizontal state with dependency links
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;
 let tray;
 let isQuitting = false;
 let windowMode = 'normal';
+let performanceOrientation = 'vertical';
+let performanceDependenciesVisible = false;
 let restoreMode = 'normal';
 let expandedBounds;
 let dragTimer;
@@ -65,9 +70,22 @@ function getInitialBounds() {
   return constrainBounds(bounds, screen.getDisplayMatching(bounds));
 }
 
+function performanceWindowSize() {
+  if (performanceOrientation === 'horizontal') {
+    return {
+      width: PERFORMANCE_HORIZONTAL_WINDOW_WIDTH,
+      height: performanceDependenciesVisible ? PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT_WITH_LINKS : PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT
+    };
+  }
+  return {
+    width: PERFORMANCE_WINDOW_WIDTH,
+    height: performanceDependenciesVisible ? PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS : PERFORMANCE_WINDOW_HEIGHT
+  };
+}
+
 function miniWindowSize(mode) {
   return mode === 'performance'
-    ? { width: PERFORMANCE_WINDOW_WIDTH, height: PERFORMANCE_WINDOW_HEIGHT }
+    ? performanceWindowSize()
     : { width: COMPACT_WINDOW_SIZE, height: COMPACT_WINDOW_SIZE };
 }
 
@@ -911,12 +929,21 @@ app.whenReady().then(() => {
   ipcMain.on('shell:open-external', (_event, url) => {
     if (typeof url === 'string' && /^https:\/\//i.test(url)) shell.openExternal(url);
   });
-  ipcMain.on('widget:perf-height', (_event, height) => {
+  ipcMain.on('widget:perf-layout', (_event, layout) => {
     if (!mainWindow || mainWindow.isDestroyed() || windowMode !== 'performance') return;
+    const requested = layout && typeof layout === 'object' ? layout : {};
+    const orientation = requested.orientation === 'horizontal' ? 'horizontal' : 'vertical';
+    const showDependencies = requested.showDependencies === true;
+    if (orientation === performanceOrientation && showDependencies === performanceDependenciesVisible) return;
+    performanceOrientation = orientation;
+    performanceDependenciesVisible = showDependencies;
     const bounds = mainWindow.getBounds();
-    const newHeight = height === 'with-links' ? PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS : PERFORMANCE_WINDOW_HEIGHT;
-    if (bounds.height !== newHeight) {
-      mainWindow.setBounds({ ...bounds, height: newHeight }, false);
+    const display = screen.getDisplayMatching(bounds);
+    const size = performanceWindowSize();
+    updateWindowLimits(display);
+    const constrained = constrainBounds({ ...bounds, ...size }, display);
+    if (bounds.x !== constrained.x || bounds.y !== constrained.y || bounds.width !== constrained.width || bounds.height !== constrained.height) {
+      mainWindow.setBounds(constrained, false);
     }
   });
   ipcMain.on('widget:drag-start', beginDrag);

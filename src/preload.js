@@ -22,5 +22,5 @@ contextBridge.exposeInMainWorld('gamesWidget', {
   onPerformanceSample: (callback) => ipcRenderer.on('widget:performance-sample', (_event, sample) => callback(sample)),
   onOpenSettings: (callback) => ipcRenderer.on('open-settings', callback),
   openExternal: (url) => ipcRenderer.send('shell:open-external', url),
-  setPerformanceHeight: (height) => ipcRenderer.send('widget:perf-height', height)
+  setPerformanceLayout: (layout) => ipcRenderer.send('widget:perf-layout', layout)
 });
