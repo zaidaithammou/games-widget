@@ -1,0 +1,82 @@
+
+name: Bug Report
+description: Report a problem or unexpected behavior.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug!
+        Please provide as much detail as possible.
+
+  - type: input
+    id: version
+    attributes:
+      label: Application Version
+      placeholder: "Example: 1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows Version
+      options:
+        - Windows 10
+        - Windows 11
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Affected Feature
+      options:
+        - Game Scanning
+        - Game Launching
+        - Artwork
+        - Game Library
+        - Custom Groups
+        - Widget Controls
+        - Settings
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Describe the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Explain how to reproduce the issue.
+      placeholder: |
+        1. Open Games Widget.
+        2. Navigate to...
+        3. Click...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Screenshots or Additional Information
+      description: Add screenshots or error messages.
+    validations:
+      required: false
