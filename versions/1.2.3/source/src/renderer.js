@@ -1212,16 +1212,8 @@ function updatePerformancePanel(sample = {}) {
         ? history.map((value, index) => `${((offset + index) * step).toFixed(2)},${(22 - (value / max) * 20).toFixed(2)}`).join(' ')
         : '0,22 100,22');
 
-    const notes = [];
-    const sources = Array.isArray(sample.sources) ? sample.sources : [];
-    if (sources.length) notes.push(`via ${sources.join(', ')}`);
     const missingFps = !hasFps && sample.ramTotalGb;
     const missingTemps = !Number.isFinite(sample.cpuTemp) && !Number.isFinite(sample.gpuTemp) && sample.ramTotalGb;
-    if (missingFps) notes.push('FPS: install RivaTuner Statistics Server (RTSS)');
-    if (missingTemps) notes.push('Temps: run MSI Afterburner');
-    const source = document.getElementById('perfSource');
-    source.textContent = notes.join(' · ');
-    source.title = 'FPS comes from RivaTuner Statistics Server (RTSS). Temperatures come from MSI Afterburner or LibreHardwareMonitor when they are running.';
     const showDependencies = Boolean(missingFps || missingTemps);
     performanceDependenciesVisible = showDependencies;
     document.getElementById('perfDownloads').hidden = !showDependencies;

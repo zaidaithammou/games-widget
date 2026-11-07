@@ -952,24 +952,26 @@ body.performance .performance-panel:active { cursor: grabbing; }
 }
 
 body.performance.performance-horizontal .perf-stats {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
     align-items: stretch;
 }
-body.performance.performance-horizontal .perf-stats > * {
-    flex: 1 1 0;
-    min-width: 0;
-}
-body.performance.performance-horizontal .perf-fps-card { flex: 1.6 1 0; }
-body.performance.performance-horizontal .perf-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-}
-body.performance.performance-horizontal .perf-row .perf-label {
-    flex: 0 0 auto;
-    width: 34px;
-}
-body.performance.performance-horizontal .perf-metric { flex: 0 0 auto; }
+body.performance.performance-horizontal .perf-stats > * { min-width: 0; }
+body.performance.performance-horizontal .perf-card { padding: 6px 8px; }
+body.performance.performance-horizontal .perf-row { gap: 6px; min-height: 36px; }
+body.performance.performance-horizontal .perf-label { flex: 0 0 30px; font-size: 10px; }
+body.performance.performance-horizontal .perf-metric { gap: 4px; }
+body.performance.performance-horizontal .perf-ring { flex: 0 0 16px; width: 16px; height: 16px; }
+body.performance.performance-horizontal .perf-value { font-size: 14px; }
+body.performance.performance-horizontal .perf-unit { margin-left: -3px; font-size: 10px; }
+body.performance.performance-horizontal .perf-fps-value { font-size: 20px; }
+body.performance.performance-horizontal .perf-frametime { font-size: 10px; }
+body.performance.performance-horizontal .perf-graph { height: 14px; margin-top: 2px; }
+body.performance.performance-horizontal .perf-fps-hint { display: none !important; }
+body.performance.performance-horizontal .perf-downloads { flex-direction: row; gap: 8px; }
+body.performance.performance-horizontal .perf-downloads > span { margin-bottom: 0; }
+body.performance.performance-horizontal .perf-links-row { flex-wrap: nowrap; }
 
 .perf-card {
     padding: 8px 12px;
@@ -1018,21 +1020,12 @@ body.performance.performance-horizontal .perf-metric { flex: 0 0 auto; }
 .perf-ring-fill[data-tone="idle"] { stroke: transparent; }
 .perf-value { font-size: 18px; font-variant-numeric: tabular-nums; }
 .perf-unit { margin-left: -4px; font-size: 11px; color: rgba(255, 255, 255, 0.75); }
-.perf-source {
-    min-height: 12px;
-    overflow: hidden;
-    font-size: 9.5px;
-    color: rgba(255, 255, 255, 0.45);
-    text-align: center;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
 .perf-downloads {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    font-size: 7px;
+    font-size: 9px;
     color: rgba(255, 255, 255, 0.45);
     margin-top: 2px;
     padding: 0 4px;
@@ -1041,25 +1034,27 @@ body.performance.performance-horizontal .perf-metric { flex: 0 0 auto; }
 }
 .perf-downloads[hidden] { display: none; }
 .perf-downloads > span {
-    font-size: 7px;
+    font-size: 9px;
     color: rgba(255, 255, 255, 0.45);
     margin-bottom: 1px;
     white-space: nowrap;
 }
 .perf-links-row {
     display: flex;
-    gap: 3px;
+    gap: 6px;
     justify-content: center;
     max-width: 100%;
     flex-wrap: wrap;
 }
 .perf-link {
-    padding: 1px 5px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.05);
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.07);
     color: #9aa8ff;
-    font-size: 7px;
+    font-size: 10px;
     line-height: 1.2;
     cursor: pointer;
     transition: background 0.15s ease;
