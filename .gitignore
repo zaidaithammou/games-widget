@@ -17,6 +17,9 @@ release/
 npm-debug.log*
 coverage/
 
+# Dev-server layout editor state
+.edit-overrides/
+
 # Operating system files
 .DS_Store
 Thumbs.db

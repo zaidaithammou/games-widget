@@ -12,12 +12,12 @@ const MIN_WINDOW_HEIGHT = 460;
 const MAX_WINDOW_WIDTH = 960;
 const MAX_WINDOW_HEIGHT = 540;
 const COMPACT_WINDOW_SIZE = 56;
-const PERFORMANCE_WINDOW_WIDTH = 260;
-const PERFORMANCE_WINDOW_HEIGHT = 260; // Compact vertical state with all dependencies installed
-const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 304; // Vertical state with dependency links
+const PERFORMANCE_WINDOW_WIDTH = 202;
+const PERFORMANCE_WINDOW_HEIGHT = 265; // Compact vertical state with all dependencies installed
+const PERFORMANCE_WINDOW_HEIGHT_WITH_LINKS = 309; // Vertical state with dependency links
 const PERFORMANCE_STATUS_HEIGHT = 19; // Extra vertical space for the telemetry status line
-const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 760;
-const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 72; // Ultra-slim horizontal state
+const PERFORMANCE_HORIZONTAL_WINDOW_WIDTH = 495;
+const PERFORMANCE_HORIZONTAL_WINDOW_HEIGHT = 50; // Ultra-slim horizontal FPS overlay
 const XBOX_AUMID = /^[\w.-]+_[a-z0-9]+![\w.-]+$/i;
 
 let mainWindow;

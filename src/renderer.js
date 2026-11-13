@@ -11,7 +11,12 @@ let pendingGameWallpaper = null;
 const gamesGrid = document.getElementById('gamesGrid');
 const searchInput = document.getElementById('searchInput');
 const sortSelect = document.getElementById('sortSelect');
-const coverArtSelect = document.getElementById('coverArtSelect');
+const coverArtToggle = document.getElementById('coverArtToggle');
+const coverArtToggleIcon = document.getElementById('coverArtToggleIcon');
+const COVER_ICONS = {
+    icons: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+    disks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>'
+};
 const settingsBtn = document.getElementById('settingsBtn');
 const scanGamesBtn = document.getElementById('scanGamesBtn');
 const settingsPanel = document.getElementById('settingsPanel');
@@ -28,6 +33,9 @@ const LAUNCH_FIELDS = ['epicAppName', 'epicCatalogNamespace', 'epicCatalogItemId
 
 // Initialize
 async function init() {
+    applyTheme(localStorage.getItem('widgetTheme') || 'dark');
+    setupAccordion();
+    setupThemeSwitcher();
     await loadSettings();
     await loadGames();
     setupEventListeners();
@@ -61,7 +69,7 @@ async function loadSettings() {
     const savedStyle = localStorage.getItem('coverArtStyle');
     if (savedStyle) {
         coverArtStyle = savedStyle === 'disks' ? 'disks' : 'icons';
-        coverArtSelect.value = coverArtStyle;
+        updateCoverArtToggle();
     }
 
     const savedPlatforms = localStorage.getItem('platformSettings');
@@ -173,6 +181,61 @@ function saveGames() {
     window.gamesWidget.saveGames(games);
 }
 
+// Theme switching
+const THEMES = ['dark', 'light', 'cyber', 'nord', 'emerald'];
+
+function applyTheme(theme) {
+    const next = THEMES.includes(theme) ? theme : 'dark';
+    document.body.dataset.theme = next;
+    localStorage.setItem('widgetTheme', next);
+    document.querySelectorAll('.theme-option').forEach((option) => {
+        option.classList.toggle('is-active', option.dataset.theme === next);
+    });
+}
+
+function setupThemeSwitcher() {
+    document.querySelectorAll('.theme-option').forEach((option) => {
+        option.addEventListener('click', () => applyTheme(option.dataset.theme));
+    });
+}
+
+// Settings accordion (exclusive open)
+function setupAccordion() {
+    document.querySelectorAll('.accordion-header').forEach((header) => {
+        header.addEventListener('click', () => {
+            const item = header.closest('.accordion-item');
+            const isOpen = item.classList.contains('is-open');
+            closeAllAccordionItems();
+            if (!isOpen) {
+                item.classList.add('is-open');
+                header.setAttribute('aria-expanded', 'true');
+                localStorage.setItem('openSettingsSection', item.dataset.section || '');
+            } else {
+                localStorage.removeItem('openSettingsSection');
+            }
+        });
+    });
+}
+
+function closeAllAccordionItems() {
+    document.querySelectorAll('.accordion-item.is-open').forEach((item) => {
+        item.classList.remove('is-open');
+        const header = item.querySelector('.accordion-header');
+        if (header) header.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function restoreOpenAccordionSection() {
+    closeAllAccordionItems();
+    const section = localStorage.getItem('openSettingsSection');
+    if (!section) return;
+    const item = document.querySelector(`.accordion-item[data-section="${section}"]`);
+    if (!item) return;
+    item.classList.add('is-open');
+    const header = item.querySelector('.accordion-header');
+    if (header) header.setAttribute('aria-expanded', 'true');
+}
+
 // Setup Event Listeners
 function setupEventListeners() {
     minimizeBtn.addEventListener('click', () => window.gamesWidget.minimize());
@@ -254,9 +317,12 @@ function setupEventListeners() {
     });
 
     // Cover Art Style
-    coverArtSelect.addEventListener('change', (e) => {
-        coverArtStyle = e.target.value;
+    coverArtToggle.addEventListener('click', () => {
+        coverArtToggle.classList.add('is-swapping');
+        setTimeout(() => coverArtToggle.classList.remove('is-swapping'), 260);
+        coverArtStyle = coverArtStyle === 'icons' ? 'disks' : 'icons';
         localStorage.setItem('coverArtStyle', coverArtStyle);
+        updateCoverArtToggle();
         updateCoverArtSettings();
         renderGames();
     });
@@ -265,6 +331,7 @@ function setupEventListeners() {
     settingsBtn.addEventListener('click', () => {
         settingsPanel.style.display = 'flex';
         loadSettingsUI();
+        restoreOpenAccordionSection();
     });
 
     document.getElementById('closeSettingsBtn').addEventListener('click', () => {
@@ -304,6 +371,7 @@ function setupEventListeners() {
     window.gamesWidget.onOpenSettings(() => {
         settingsPanel.style.display = 'flex';
         loadSettingsUI();
+        restoreOpenAccordionSection();
     });
 
 }
@@ -405,7 +473,7 @@ function renderGameFolders(filteredGames) {
         count.textContent = String(groupGames.length);
         const chevron = document.createElement('span');
         chevron.className = 'game-folder-chevron';
-        chevron.textContent = '⌄';
+        chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
         header.append(icon, name, count, chevron);
 
         const panel = document.createElement('div');
@@ -698,6 +766,15 @@ function removeGame(game) {
     }
 }
 
+// Update Cover Art Toggle Button
+function updateCoverArtToggle() {
+    if (!coverArtToggleIcon) return;
+    coverArtToggleIcon.innerHTML = COVER_ICONS[coverArtStyle] || COVER_ICONS.icons;
+    const hint = coverArtStyle === 'disks' ? 'Switch to Icons view' : 'Switch to Disks view';
+    coverArtToggle.title = hint;
+    coverArtToggle.setAttribute('aria-label', hint);
+}
+
 // Update Cover Art Settings
 function updateCoverArtSettings() {
     const styleRadios = document.querySelectorAll('input[name="coverStyle"]');
@@ -737,7 +814,7 @@ function saveSettingsFromUI() {
     if (selectedStyle) {
         coverArtStyle = selectedStyle.value;
         localStorage.setItem('coverArtStyle', coverArtStyle);
-        coverArtSelect.value = coverArtStyle;
+        updateCoverArtToggle();
     }
 
     // Save platform settings

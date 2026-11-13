@@ -1,11 +1,12 @@
 {
   "name": "games-widget",
-  "version": "2.0.4",
+  "version": "2.3.6",
   "description": "A modern Windows desktop widget for game library display",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "dev:web": "node dev-server.js",
     "build": "electron-builder",
     "build:portable": "electron-builder --win portable --x64",
     "test": "electron legacy/test.js",
