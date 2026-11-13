@@ -12,7 +12,9 @@ Games Widget is a lightweight Windows desktop companion for organizing and launc
 - **Custom game artwork** lets you choose a local image for an individual game. The image is copied into the app's user data so it remains available after restart.
 - **Game editing** lets you change a game's displayed name and custom wallpaper while retaining its original launcher identity for artwork and launching.
 - **Game launching** supports Steam links, Epic Games Launcher links, Xbox app entries, Ubisoft Connect links, Battle.net, and installed executable paths when available.
-- **Performance mode** turns the widget into a small always-on-top overlay showing FPS, frame time, CPU and GPU temperature and load, and RAM usage. CPU load and RAM are always available; temperatures and GPU load come from MSI Afterburner, LibreHardwareMonitor, or Windows GPU counters. FPS comes from RivaTuner Statistics Server (RTSS) - the widget automatically starts RTSS if it's installed but not running. The performance overlay includes minimize and exit buttons and uses the same visual style as the main widget.
+- **Performance mode** turns the widget into a small always-on-top overlay showing FPS, frame time, CPU and GPU temperature and load, and RAM usage. CPU load and RAM are always available; temperatures and GPU load come from MSI Afterburner, LibreHardwareMonitor, or Windows GPU counters. FPS comes from RivaTuner Statistics Server (RTSS) - the widget automatically starts RTSS if it's installed but not running. The overlay ships in two layouts: a vertical card view and a slim horizontal bar with hardware icons, switchable from the header menu. Both include minimize and exit controls and share the widget's visual style.
+- **Five visual themes** — Midnight, Clean Light, Midnight Cyber Blue, Nordic Frost, and Emerald Dusk — selectable from the accordion-style Settings panel alongside cover-art style, platform filters, and custom groups.
+- **Cover art flip toggle** switches game cards between disc-style artwork and fitted icon/wallpaper artwork with a flip animation.
 - **Launcher folders and custom groups** organize games by launcher (Steam, Epic Games, GOG, Xbox, Battle.net, Ubisoft Connect, EA App, Manual) or groups you create. Right-click a game to move it to a custom group; choose **Sort by Group** to browse folder-style groups.
 - **Persistent library and settings** restore saved games, user groups, artwork choices, and widget placement after restart.
 - **Widget controls** include drag-to-move, resize limits, minimize-to-compact-icon, restore, always-on-top behavior that works over fullscreen apps, and a system tray menu.
@@ -61,7 +63,7 @@ Use Git commits to record the **source-code changes** for every iteration. Befor
 
 ### Publish the recovered versions in order
 
-[`publish-history.sh`](publish-history.sh) publishes the reconstructed history one version at a time: it advances `main`, pushes the matching version tag, and creates a GitHub Release with that version's executable and changelog. The first missing release publishes immediately; each following release starts after a five-minute wait. With 14 versions and no existing releases, the sequence takes about 65 minutes plus upload time. The final repository-documentation commit is pushed after the last release.
+[`publish-history.sh`](publish-history.sh) publishes the reconstructed history one version at a time: it advances `main`, pushes the matching version tag, and creates a GitHub Release with that version's executable and changelog. The first missing release publishes immediately; each following release starts after a five-minute wait, so a full backfill takes roughly five minutes per remaining version plus upload time. The final repository-documentation commit is pushed after the last release.
 
 Install **Git for Windows** and **GitHub CLI**, authenticate in Git Bash with `gh auth login`, then open Git Bash in the project folder and run:
 
@@ -101,7 +103,7 @@ Keep `build/` out of ordinary Git commits. GitHub Releases are the right place f
 ## Use the widget
 
 1. Select **Scan Games**, choose the launchers to scan, and add the games you want in the library.
-2. Use the view selector to switch between **Disks** and **Icons** (fitted wallpaper artwork).
+2. Use the cover-art flip toggle to switch between **Disks** and **Icons** (fitted wallpaper artwork).
 3. Open **Settings** to create custom groups. Right-click a game and choose **Move to Group…** to assign it. Select **Sort by Group** to see the launcher and custom folders.
 4. Right-click a game and choose **Edit** to change its displayed name or select a custom wallpaper. Choose **Save** to keep the changes.
 5. Choose **Recently Played** in the sort selector to see the games you launched most recently.
@@ -123,6 +125,7 @@ Games Widget/
 │   ├── test.js              # Minimal Electron smoke-test entry point
 │   └── web-widget.html      # Earlier standalone web prototype
 ├── versions/                # Recovered source snapshots and changelogs per version
+├── dev-server.js           # Browser dev server with per-mode preview ports and layout editor
 ├── node_modules/           # Installed npm dependencies (ignored by Git)
 ├── src/
 │   ├── main.js              # Electron window, game scanning/launching, persistence, native dialogs
@@ -152,6 +155,7 @@ The [`versions/`](versions/README.md) directory contains the packaged app source
 ## Development notes
 
 - `npm start` launches the Windows desktop app from source.
+- `npm run dev:web` serves the renderer in a browser on ports 3100–3104 (library, vertical/horizontal performance, settings, compact previews) with a floating layout editor for tuning dimensions.
 - `npm run build` produces the installer configured in `package.json`.
 - `npm run build:portable` creates the portable x64 Windows build.
 - `npm test` opens the minimal Electron smoke-test window from `legacy/`; it is not an automated test suite for the game library.
