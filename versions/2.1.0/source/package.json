@@ -1,0 +1,41 @@
+{
+  "name": "games-widget",
+  "version": "2.1.0",
+  "description": "A modern Windows desktop widget for game library display",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:portable": "electron-builder --win portable --x64",
+    "test": "electron legacy/test.js",
+    "simple": "electron legacy/test.js"
+  },
+  "keywords": [
+    "electron",
+    "widget",
+    "games",
+    "desktop"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.gameswidget.app",
+    "productName": "Games Widget",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "build"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
+  }
+}
